@@ -339,6 +339,7 @@
   .type-traditional { background: #FFF3CD; color: #7A5000; border: 1px solid #E8A820; }
   .type-melomel { background: #FCE4EC; color: #880E4F; border: 1px solid #E91E63; }
   .type-metheglin { background: #E8EAF6; color: #283593; border: 1px solid #3F51B5; }
+  .type-experimental { background: #F3E5F5; color: #6A1B9A; border: 1px solid #9C27B0; }
 
   .warning-chip {
     display: inline-block;
@@ -517,23 +518,23 @@
     <h2>Tank Inventory</h2>
 
     <div class="tank-group">
-      <div class="tank-group-label">Spike CF-30 · 40 gal / 150 L</div>
+      <div class="tank-group-label">Spike CF-30 · 40 gal / 150 L  (× 12)</div>
       <div id="spike-tanks"></div>
     </div>
 
     <div class="tank-group">
-      <div class="tank-group-label">Zottel · 80 gal / 300 L</div>
+      <div class="tank-group-label">Zottel · Tanks #5 & #6 · 80 gal</div>
       <div id="zottel-tanks"></div>
     </div>
 
     <div class="tank-group">
-      <div class="tank-group-label">300 L · Drain Only</div>
-      <div id="tank300"></div>
+      <div class="tank-group-label">Jaklic · Tank #13 · 300 L · Drain Only</div>
+      <div id="tank13"></div>
     </div>
 
     <div class="tank-group">
-      <div class="tank-group-label">Marchisio · 500 L · Drain Only</div>
-      <div id="marchisio-tank"></div>
+      <div class="tank-group-label">Marchisio · Tank #14 · 500 L · Drain Only</div>
+      <div id="tank14"></div>
     </div>
 
     <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
@@ -574,6 +575,7 @@
                 <option value="traditional">Traditional</option>
                 <option value="melomel">Melomel</option>
                 <option value="metheglin">Metheglin</option>
+                <option value="experimental">Experimental (Fruit + Spice)</option>
               </select>
             </div>
             <div class="form-group">
@@ -595,18 +597,36 @@
               <input type="number" id="fermentDays" value="60" min="1">
             </div>
           </div>
-          <div class="form-row" id="extraIngredientRow">
-            <div class="form-group" id="fruitGroup" style="display:none">
-              <label>Fruit (lbs)</label>
+          <div class="form-row" id="fruitIngredientRow" style="display:none">
+            <div class="form-group">
+              <label>Fruit(s) Added</label>
+              <input type="text" id="fruitTypes" placeholder="e.g. Red raspberries, blueberries">
+            </div>
+            <div class="form-group">
+              <label>Fruit Weight (lbs)</label>
               <input type="number" id="fruitLbs" value="50" min="0">
             </div>
             <div class="form-group" id="spiceGroup" style="display:none">
               <label>Spice / Additions</label>
               <input type="text" id="spiceNotes" placeholder="e.g. 2 oz cinnamon, vanilla">
             </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Moon Phase at Brew</label>
+              <select id="moonPhase">
+                <option value="">— Select if applicable —</option>
+                <option value="New Moon (waxing)">New Moon (waxing)</option>
+                <option value="NEW MOON">NEW MOON</option>
+                <option value="New Moon (waning)">New Moon (waning)</option>
+                <option value="Full Moon (waxing)">Full Moon (waxing)</option>
+                <option value="FULL MOON">FULL MOON</option>
+                <option value="Full Moon (waning)">Full Moon (waning)</option>
+              </select>
+            </div>
             <div class="form-group">
               <label>Notes</label>
-              <input type="text" id="batchNotes" placeholder="Moon phase, yeast strain, etc.">
+              <input type="text" id="batchNotes" placeholder="Yeast strain, source, other details">
             </div>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
@@ -672,24 +692,25 @@
 // =====================
 
 const TANKS = [
-  // Spike CF-30 x10
-  ...Array.from({length:10}, (_,i) => ({
+  // Spike CF-30 x12 (tanks 10, 11, 12 are leased — will be owned outright when paid off)
+  ...Array.from({length:12}, (_,i) => ({
     id: `spike-${i+1}`,
-    name: `Spike CF-30 #${i+1}`,
+    name: `Spike CF-30 #${i+1}${[9,10,11,12].includes(i+1) ? ' (leased)' : ''}`,
     maker: 'Spike',
     liters: 150,
     gallons: 40,
     rackingValve: true,
-    samplePort: false,
+    samplePort: true,
     dumpValve: true,
     rackingWaste_gal: 1,
     group: 'spike',
-    honeyPer40gal: 120, // base unit is 40 gal
+    honeyPer40gal: 120,
+    leased: [9,10,11,12].includes(i+1),
   })),
   // Zottel x2
   ...Array.from({length:2}, (_,i) => ({
-    id: `zottel-${i+1}`,
-    name: `Zottel 80gal #${i+1}`,
+    id: `zottel-${i+5}`,
+    name: `Zottel 80gal (Tank #${i+5})`,
     maker: 'Zottel',
     liters: 300,
     gallons: 80,
@@ -702,8 +723,8 @@ const TANKS = [
   })),
   // 300 L drain-only
   {
-    id: 'tank300',
-    name: '300 L Drain-Only',
+    id: 'tank13',
+    name: 'Jaklic Tank #13 (300L, drain only)',
     maker: 'Unknown',
     liters: 300,
     gallons: 79,
@@ -711,14 +732,14 @@ const TANKS = [
     samplePort: false,
     dumpValve: true,
     rackingWaste_gal: 0,
-    group: 'tank300',
+    group: 'tank13',
     honeyPer40gal: 120,
     drainOnly: true,
   },
   // Marchisio 500 L
   {
-    id: 'marchisio',
-    name: 'Marchisio 500 L',
+    id: 'tank14',
+    name: 'Marchisio Tank #14 (500L, drain only)',
     maker: 'Marchisio',
     liters: 500,
     gallons: 132,
@@ -726,7 +747,7 @@ const TANKS = [
     samplePort: false,
     dumpValve: true,
     rackingWaste_gal: 0,
-    group: 'marchisio',
+    group: 'tank14',
     honeyPer40gal: 120,
     drainOnly: true,
   },
@@ -735,10 +756,108 @@ const TANKS = [
 const MEAD_TYPES = {
   traditional: { label: 'Traditional', color: 'type-traditional', honeyPer40: 120, fruitPer40: 0, hasFruit: false, hasSpice: false },
   melomel:     { label: 'Melomel',     color: 'type-melomel',     honeyPer40: 120, fruitPer40: 50, hasFruit: true,  hasSpice: false },
-  metheglin:   { label: 'Metheglin',   color: 'type-metheglin',   honeyPer40: 120, fruitPer40: 0,  hasFruit: false, hasSpice: true },
+  metheglin:     { label: 'Metheglin',     color: 'type-metheglin',     honeyPer40: 120, fruitPer40: 0,  hasFruit: false, hasSpice: true  },
+  experimental:  { label: 'Experimental',  color: 'type-experimental',  honeyPer40: 120, fruitPer40: 50, hasFruit: true,  hasSpice: true  },
 };
 
 let batches = [];
+
+// Pre-loaded active batches as of April 2026
+const INITIAL_BATCHES = [
+  {
+    id: 1, name: 'GT-Marmeleiro', type: 'traditional', varietal: 'Marmeleiro',
+    tankId: 'spike-1', tankName: 'Spike CF-30 #1', tankGallons: 40,
+    startDate: '2025-08-23', fermentDays: 120,
+    notes: '', honeyLbs: 120, fruitLbs: 0, spiceNotes: '', fruitTypes: '', moonPhase: '',
+    leesLoss: 1, fruitLoss: 0, miscLoss: 1, rackWaste: 1, totalLoss: 3,
+    netVolume: 37, scaleFactor: 1, complete: false, drainOnly: false,
+    hasRack: true, hasSample: true,
+  },
+  {
+    id: 2, name: 'GT-Lychee', type: 'traditional', varietal: 'Lychee',
+    tankId: 'spike-2', tankName: 'Spike CF-30 #2', tankGallons: 40,
+    startDate: '2025-10-07', fermentDays: 120,
+    notes: '', honeyLbs: 120, fruitLbs: 0, spiceNotes: '', fruitTypes: '', moonPhase: '',
+    leesLoss: 1, fruitLoss: 0, miscLoss: 1, rackWaste: 1, totalLoss: 3,
+    netVolume: 37, scaleFactor: 1, complete: false, drainOnly: false,
+    hasRack: true, hasSample: true,
+  },
+  {
+    id: 3, name: "Talisker's Rainbow", type: 'experimental', varietal: 'TBD',
+    tankId: 'spike-3', tankName: 'Spike CF-30 #3', tankGallons: 40,
+    startDate: '2025-07-13', fermentDays: 120,
+    notes: 'Honey varietal TBD.', honeyLbs: 120, fruitLbs: 50, fruitTypes: 'Bilberries', spiceNotes: 'Rosemary', moonPhase: '',
+    leesLoss: 1, fruitLoss: 5, miscLoss: 1, rackWaste: 1, totalLoss: 8,
+    netVolume: 32, scaleFactor: 1, complete: false, drainOnly: false,
+    hasRack: true, hasSample: true,
+  },
+  {
+    id: 4, name: 'Imbolc Red Backpack', type: 'melomel', varietal: 'Marmeleiro',
+    tankId: 'spike-7', tankName: 'Spike CF-30 #7', tankGallons: 40,
+    startDate: '2026-02-01', fermentDays: 120,
+    notes: '', honeyLbs: 120, fruitLbs: 50, fruitTypes: 'Red currants', spiceNotes: '', moonPhase: '',
+    leesLoss: 1, fruitLoss: 5, miscLoss: 1, rackWaste: 1, totalLoss: 8,
+    netVolume: 32, scaleFactor: 1, complete: false, drainOnly: false,
+    hasRack: true, hasSample: true,
+  },
+  {
+    id: 5, name: 'Crimson in Clover', type: 'melomel', varietal: 'Clover',
+    tankId: 'spike-8', tankName: 'Spike CF-30 #8', tankGallons: 40,
+    startDate: '2025-11-05', fermentDays: 120,
+    notes: '', honeyLbs: 120, fruitLbs: 50, fruitTypes: 'Red raspberries', spiceNotes: '', moonPhase: '',
+    leesLoss: 1, fruitLoss: 5, miscLoss: 1, rackWaste: 1, totalLoss: 8,
+    netVolume: 32, scaleFactor: 1, complete: false, drainOnly: false,
+    hasRack: true, hasSample: true,
+  },
+  {
+    id: 6, name: "Geoff's Chocolate Waltz", type: 'metheglin', varietal: 'Dark Wildflower',
+    tankId: 'spike-9', tankName: 'Spike CF-30 #9 (leased)', tankGallons: 40,
+    startDate: '2025-12-20', fermentDays: 120,
+    notes: 'Dutch processed cocoa powder, cacao nibs, vanilla beans (varietal TBD)',
+    honeyLbs: 120, fruitLbs: 0, fruitTypes: '', spiceNotes: 'Dutch cocoa, cacao nibs, vanilla TBD', moonPhase: '',
+    leesLoss: 1, fruitLoss: 0, miscLoss: 1, rackWaste: 1, totalLoss: 3,
+    netVolume: 37, scaleFactor: 1, complete: false, drainOnly: false,
+    hasRack: true, hasSample: true,
+  },
+  {
+    id: 7, name: 'Pink Moon', type: 'melomel', varietal: 'TBD',
+    tankId: 'spike-10', tankName: 'Spike CF-30 #10 (leased)', tankGallons: 40,
+    startDate: '2026-04-02', fermentDays: 120,
+    notes: 'Honey varietal TBD.', honeyLbs: 120, fruitLbs: 50, fruitTypes: 'Blueberries', spiceNotes: '', moonPhase: 'FULL MOON',
+    leesLoss: 1, fruitLoss: 5, miscLoss: 1, rackWaste: 1, totalLoss: 8,
+    netVolume: 32, scaleFactor: 1, complete: false, drainOnly: false,
+    hasRack: true, hasSample: true,
+  },
+  {
+    id: 8, name: 'Plum & Plummer', type: 'melomel', varietal: 'TBD',
+    tankId: 'spike-12', tankName: 'Spike CF-30 #12 (leased)', tankGallons: 40,
+    startDate: '2026-02-20', fermentDays: 120,
+    notes: 'Honey varietal TBD.', honeyLbs: 120, fruitLbs: 50, fruitTypes: 'Local plums', spiceNotes: '', moonPhase: '',
+    leesLoss: 1, fruitLoss: 5, miscLoss: 1, rackWaste: 1, totalLoss: 8,
+    netVolume: 32, scaleFactor: 1, complete: false, drainOnly: false,
+    hasRack: true, hasSample: true,
+  },
+  {
+    id: 9, name: 'Jaklic', type: 'traditional', varietal: 'Clover',
+    tankId: 'tank13', tankName: 'Jaklic Tank #13 (300L, drain only)', tankGallons: 79,
+    startDate: '2025-10-21', fermentDays: 120,
+    notes: 'Drain-only tank — plan for full empty transfer at racking.',
+    honeyLbs: 237, fruitLbs: 0, fruitTypes: '', spiceNotes: '', moonPhase: '',
+    leesLoss: 2, fruitLoss: 0, miscLoss: 2, rackWaste: 0, totalLoss: 4,
+    netVolume: 75, scaleFactor: 1.975, complete: false, drainOnly: true,
+    hasRack: false, hasSample: false,
+  },
+  {
+    id: 10, name: 'Valhalla Can Wait', type: 'traditional', varietal: 'Knotweed',
+    tankId: 'zottel-5', tankName: 'Zottel 80gal (Tank #5)', tankGallons: 80,
+    startDate: '2025-11-20', fermentDays: 120,
+    notes: '10% of proceeds support Operation Reboot Outdoors. Always Knotweed honey.',
+    honeyLbs: 240, fruitLbs: 0, fruitTypes: '', spiceNotes: '', moonPhase: '',
+    leesLoss: 2, fruitLoss: 0, miscLoss: 2, rackWaste: 5, totalLoss: 9,
+    netVolume: 71, scaleFactor: 2, complete: false, drainOnly: false,
+    hasRack: true, hasSample: true,
+  },
+];
 let batchIdCounter = 1;
 
 // =====================
@@ -775,10 +894,10 @@ function renderSidebar() {
     TANKS.filter(t => t.group === 'spike').map(renderTank).join('');
   document.getElementById('zottel-tanks').innerHTML =
     TANKS.filter(t => t.group === 'zottel').map(renderTank).join('');
-  document.getElementById('tank300').innerHTML =
-    TANKS.filter(t => t.group === 'tank300').map(renderTank).join('');
-  document.getElementById('marchisio-tank').innerHTML =
-    TANKS.filter(t => t.group === 'marchisio').map(renderTank).join('');
+  document.getElementById('tank13').innerHTML =
+    TANKS.filter(t => t.group === 'tank13').map(renderTank).join('');
+  document.getElementById('tank14').innerHTML =
+    TANKS.filter(t => t.group === 'tank14').map(renderTank).join('');
 }
 
 function selectTank(tankId) {
@@ -809,7 +928,7 @@ function populateTankSelect() {
 function updateTypeDefaults() {
   const type = document.getElementById('meadType').value;
   const info = MEAD_TYPES[type];
-  document.getElementById('fruitGroup').style.display = info.hasFruit ? 'block' : 'none';
+  document.getElementById('fruitIngredientRow').style.display = info.hasFruit ? 'grid' : 'none';
   document.getElementById('spiceGroup').style.display = info.hasSpice ? 'block' : 'none';
 }
 
@@ -818,7 +937,9 @@ function clearForm() {
   document.getElementById('honeyVarietal').value = '';
   document.getElementById('batchNotes').value = '';
   document.getElementById('fruitLbs').value = 50;
+  document.getElementById('fruitTypes').value = '';
   document.getElementById('spiceNotes').value = '';
+  document.getElementById('moonPhase').value = '';
   document.getElementById('tankSelect').value = '';
   document.getElementById('formMsg').textContent = '';
   document.getElementById('startDate').value = '';
@@ -835,6 +956,8 @@ function addBatch() {
   const notes = document.getElementById('batchNotes').value.trim();
   const fruitLbs = parseFloat(document.getElementById('fruitLbs').value) || 0;
   const spiceNotes = document.getElementById('spiceNotes').value.trim();
+  const fruitTypes = document.getElementById('fruitTypes').value.trim();
+  const moonPhase = document.getElementById('moonPhase').value;
   const msg = document.getElementById('formMsg');
 
   if (!name) { msg.textContent = 'Batch name required.'; return; }
@@ -873,7 +996,9 @@ function addBatch() {
     fermentDays,
     notes,
     fruitLbs: fruit,
-    spiceNotes: type === 'metheglin' ? spiceNotes : '',
+    spiceNotes: (type === 'metheglin' || type === 'experimental') ? spiceNotes : '',
+    fruitTypes: (type === 'melomel' || type === 'experimental') ? fruitTypes : '',
+    moonPhase,
     honeyLbs: honey,
     netVolume,
     rackWaste: tank.rackingWaste_gal,
@@ -946,13 +1071,15 @@ function renderScheduleTable() {
         <td>
           <div style="font-weight:500;">${b.name}</div>
           ${b.varietal ? `<div style="font-size:0.72rem; color:var(--mid);">${b.varietal}</div>` : ''}
+          ${b.moonPhase ? `<div style="font-size:0.7rem; color:var(--amber); font-family:'DM Mono',monospace;">&#9790; ${b.moonPhase}</div>` : ''}
           ${b.notes ? `<div class="bottling-note">${b.notes}</div>` : ''}
         </td>
         <td><span class="type-badge ${typeInfo.color}">${typeInfo.label}</span></td>
         <td style="font-family:'DM Mono',monospace; font-size:0.8rem;">${b.tankName}<br><span style="font-size:0.65rem; color:var(--mid);">${b.tankGallons} gal</span></td>
         <td style="font-family:'DM Mono',monospace; font-size:0.8rem;">
           <strong>${b.honeyLbs} lbs</strong> honey
-          ${b.fruitLbs ? `<br>${b.fruitLbs} lbs fruit` : ''}
+          ${b.fruitTypes ? `<br>${b.fruitTypes}` : ''}
+          ${b.fruitLbs ? `<br><span style="font-size:0.7rem; color:var(--mid);">${b.fruitLbs} lbs fruit</span>` : ''}
           ${b.spiceNotes ? `<br><span style="font-size:0.7rem; color:var(--mid);">${b.spiceNotes}</span>` : ''}
         </td>
         <td style="font-family:'DM Mono',monospace; font-size:0.75rem;">
@@ -1142,6 +1269,7 @@ function renderTimeline() {
     traditional: '#C8860A',
     melomel: '#C2185B',
     metheglin: '#3F51B5',
+    experimental: '#9C27B0',
   };
 
   const rows = withDates.map(b => {
@@ -1289,6 +1417,11 @@ function renderAll() {
 
 // Load saved data if available
 const hadSavedData = loadFromLocal();
+// If no saved data, load the pre-built active batches
+if (!hadSavedData) {
+  batches = INITIAL_BATCHES;
+  batchIdCounter = INITIAL_BATCHES.length + 1;
+}
 
 // Set today as default start date
 document.getElementById('startDate').valueAsDate = new Date();
