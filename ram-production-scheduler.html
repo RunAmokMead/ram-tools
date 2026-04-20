@@ -1057,9 +1057,7 @@ function renderScheduleTable() {
     })() : '—';
 
     const warnings = [];
-    if (b.drainOnly) warnings.push('Drain-only tank: plan for full-empty transfer');
-    if (!b.hasRack && !b.drainOnly) warnings.push('No racking valve');
-    if (!b.hasSample) warnings.push('No sample port');
+    if (b.drainOnly) warnings.push('Drain-only: plan for full-empty transfer');
     if (b.complete) return '';
 
     // Bottling estimate: 375mL bottles (standard for Run Amok Mead)
@@ -1098,8 +1096,8 @@ function renderScheduleTable() {
         </td>
         <td>
           <div class="row-actions">
-            <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.6rem;" onclick="toggleComplete(${b.id})">✓ Done</button>
-            <button class="btn btn-danger" style="padding:4px 8px; font-size:0.6rem;" onclick="removeBatch(${b.id})">✕</button>
+            <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.6rem;" onclick="toggleComplete(${b.id})" title="Mark batch as complete — moves it out of active view">✓ Complete</button>
+            <button class="btn btn-danger" style="padding:4px 8px; font-size:0.6rem;" onclick="if(confirm('Delete this batch permanently?')) removeBatch(${b.id})" title="Permanently delete this batch">✕ Delete</button>
           </div>
         </td>
       </tr>
@@ -1116,7 +1114,7 @@ function renderScheduleTable() {
           <th>Ingredients</th>
           <th>Dates</th>
           <th>Yield / Bottles</th>
-          <th>Flags</th>
+          <th>Alerts</th>
           <th></th>
         </tr>
       </thead>
@@ -1327,6 +1325,7 @@ function switchTab(tab) {
 // =====================
 
 const STORAGE_KEY = 'ram_production_batches';
+const DATA_VERSION = 4; // Increment this to force a fresh load of pre-built batches
 
 function saveToLocal() {
   try {
@@ -1417,6 +1416,12 @@ function renderAll() {
 // =====================
 
 // Load saved data if available
+// Check version — if data is from an older version, reset to fresh pre-built batches
+const savedVersion = parseInt(localStorage.getItem(STORAGE_KEY + '_version') || '0');
+if (savedVersion < DATA_VERSION) {
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.setItem(STORAGE_KEY + '_version', DATA_VERSION);
+}
 const hadSavedData = loadFromLocal();
 // If no saved data, load the pre-built active batches
 if (!hadSavedData) {
