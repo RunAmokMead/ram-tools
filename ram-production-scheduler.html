@@ -692,10 +692,11 @@
 // =====================
 
 const TANKS = [
-  // Spike CF-30 x12 (tanks 10, 11, 12 are leased — will be owned outright when paid off)
-  ...Array.from({length:12}, (_,i) => ({
-    id: `spike-${i+1}`,
-    name: `Spike CF-30 #${i+1}${[9,10,11,12].includes(i+1) ? ' (leased)' : ''}`,
+  // Spike CF-30 x10 — tanks #1-4 (owned), #7-8 (owned), #9-12 (leased)
+  // Note: #5 and #6 are Zottel tanks, not Spikes
+  ...[1,2,3,4,7,8,9,10,11,12].map(n => ({
+    id: `spike-${n}`,
+    name: `Spike CF-30 #${n}${[9,10,11,12].includes(n) ? ' (leased)' : ''}`,
     maker: 'Spike',
     liters: 150,
     gallons: 40,
@@ -705,7 +706,7 @@ const TANKS = [
     rackingWaste_gal: 1,
     group: 'spike',
     honeyPer40gal: 120,
-    leased: [9,10,11,12].includes(i+1),
+    leased: [9,10,11,12].includes(n),
   })),
   // Zottel x2
   ...Array.from({length:2}, (_,i) => ({
