@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Run Amok Mead — Production Scheduler</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --amber: #C8860A;
+    --amber-light: #E8A820;
+    --amber-pale: #FDF3DC;
+    --amber-deep: #7A5000;
+    --ink: #1A1208;
+    --cream: #FAF6EE;
+    --mid: #8B7355;
+    --border: #D4B896;
+    --honey-glow: rgba(200,134,10,0.12);
+    --red-accent: #8B2515;
+    --green-accent: #2D5A27;
+    --spike-color: #4A7FA5;
+    --zottel-color: #7A5A9A;
+    --march-color: #8B4513;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--ink);
+    color: var(--amber-pale);
+    padding: 18px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    border-bottom: 3px solid var(--amber);
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+  }
+
+  header span {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--amber);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 62px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: #fff;
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(100vh - 62px);
+    position: sticky;
+    top: 0;
+  }
+
+  .sidebar h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--amber-deep);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tank-group { margin-bottom: 20px; }
+
+  .tank-group-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--mid);
+    margin-bottom: 6px;
+  }
+
+  .tank-card {
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    background: #fff;
+  }
+
+  .tank-card:hover { border-color: var(--amber); background: var(--honey-glow); }
+  .tank-card.selected { border-color: var(--amber); background: var(--amber-pale); }
+  .tank-card.in-use { border-left: 4px solid var(--red-accent); }
+  .tank-card.available { border-left: 4px solid var(--green-accent); }
+
+  .tank-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .tank-meta {
+    font-size: 0.7rem;
+    color: var(--mid);
+    margin-top: 2px;
+  }
+
+  .tank-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .badge-avail { background: #E8F5E9; color: var(--green-accent); }
+  .badge-inuse { background: #FDECEA; color: var(--red-accent); }
+
+  .capability-icons {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  .cap-icon {
+    font-size: 0.58rem;
+    padding: 1px 5px;
+    border-radius: 2px;
+    background: var(--honey-glow);
+    border: 1px solid var(--border);
+    color: var(--amber-deep);
+    font-family: 'DM Mono', monospace;
+  }
+  .cap-icon.missing {
+    background: #f5f5f5;
+    color: #bbb;
+    border-color: #ddd;
+    text-decoration: line-through;
+  }
+
+  /* MAIN CONTENT */
+  .content {
+    padding: 24px 28px;
+    overflow-y: auto;
+    max-height: calc(100vh - 62px);
+  }
+
+  .section { margin-bottom: 28px; }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: var(--amber-deep);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* BATCH BUILDER */
+  .batch-builder {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .form-group label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mid);
+    margin-bottom: 4px;
+  }
+
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--cream);
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: var(--amber);
+    background: #fff;
+  }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 9px 18px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--amber);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--amber-deep); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--amber);
+    border: 1.5px solid var(--amber);
+  }
+  .btn-secondary:hover { background: var(--honey-glow); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red-accent);
+    border: 1.5px solid var(--red-accent);
+  }
+  .btn-danger:hover { background: #FDECEA; }
+
+  /* ANALYSIS PANEL */
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--amber);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mid);
+    margin-top: 4px;
+  }
+
+  /* SCHEDULE TABLE */
+  .schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .schedule-table th {
+    background: var(--ink);
+    color: var(--amber-pale);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 10px 12px;
+    text-align: left;
+  }
+
+  .schedule-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0e8d8;
+    vertical-align: top;
+  }
+
+  .schedule-table tr:last-child td { border-bottom: none; }
+
+  .schedule-table tr:hover td { background: var(--honey-glow); }
+
+  .type-badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .type-traditional { background: #FFF3CD; color: #7A5000; border: 1px solid #E8A820; }
+  .type-melomel { background: #FCE4EC; color: #880E4F; border: 1px solid #E91E63; }
+  .type-metheglin { background: #E8EAF6; color: #283593; border: 1px solid #3F51B5; }
+
+  .warning-chip {
+    display: inline-block;
+    background: #FFF8E1;
+    border: 1px solid #FFB300;
+    color: #7A5000;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-top: 3px;
+  }
+
+  .alert {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    margin-bottom: 10px;
+    border-left: 3px solid;
+  }
+  .alert-warn { background: #FFF8E1; border-color: #FFB300; color: #5D4037; }
+  .alert-info { background: #E3F2FD; border-color: #1976D2; color: #0D47A1; }
+
+  /* INGREDIENT SUMMARY */
+  .ingredient-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .ingredient-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+  }
+
+  .ingredient-card h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mid);
+    margin-bottom: 8px;
+  }
+
+  .ingredient-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    padding: 3px 0;
+    border-bottom: 1px dotted #e8e0d0;
+  }
+  .ingredient-line:last-child { border-bottom: none; }
+  .ingredient-line .qty {
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    color: var(--amber-deep);
+  }
+
+  /* TIMELINE VISUAL */
+  .timeline-wrap {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+  }
+
+  .timeline-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
+
+  .timeline-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    width: 90px;
+    flex-shrink: 0;
+    color: var(--mid);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .timeline-bar-wrap {
+    flex: 1;
+    background: #f5efe5;
+    border-radius: 3px;
+    height: 22px;
+    position: relative;
+    min-width: 400px;
+  }
+
+  .timeline-bar {
+    position: absolute;
+    height: 100%;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 32px;
+    color: var(--mid);
+  }
+  .empty-state p { font-size: 0.85rem; margin-top: 6px; }
+  .empty-state .big { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--border); }
+
+  .row-actions { display: flex; gap: 6px; }
+
+  .bottling-note {
+    font-size: 0.72rem;
+    color: var(--mid);
+    font-style: italic;
+    margin-top: 2px;
+  }
+
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .tab {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 8px 18px;
+    cursor: pointer;
+    color: var(--mid);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+  }
+
+  .tab.active {
+    color: var(--amber-deep);
+    border-bottom-color: var(--amber);
+    font-weight: 500;
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Run Amok Mead</h1>
+  <span>Production Scheduler & Resource Analyzer</span>
+  <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+    <span id="saveStatus" style="font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--amber); opacity:0.7;"></span>
+    <button class="btn" onclick="exportJSON()" style="background:transparent; border:1px solid var(--amber); color:var(--amber); padding:5px 12px; font-size:0.65rem;">&#11015; Export Backup</button>
+    <label class="btn" style="background:transparent; border:1px solid var(--mid); color:var(--mid); padding:5px 12px; font-size:0.65rem; cursor:pointer;">
+      &#11014; Import Backup
+      <input type="file" accept=".json" onchange="importJSON(event)" style="display:none;">
+    </label>
+  </div>
+</header>
+
+<div class="main">
+  <!-- SIDEBAR: Tank Inventory -->
+  <aside class="sidebar">
+    <h2>Tank Inventory</h2>
+
+    <div class="tank-group">
+      <div class="tank-group-label">Spike CF-30 · 40 gal / 150 L</div>
+      <div id="spike-tanks"></div>
+    </div>
+
+    <div class="tank-group">
+      <div class="tank-group-label">Zottel · 80 gal / 300 L</div>
+      <div id="zottel-tanks"></div>
+    </div>
+
+    <div class="tank-group">
+      <div class="tank-group-label">300 L · Drain Only</div>
+      <div id="tank300"></div>
+    </div>
+
+    <div class="tank-group">
+      <div class="tank-group-label">Marchisio · 500 L · Drain Only</div>
+      <div id="marchisio-tank"></div>
+    </div>
+
+    <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
+      <div class="tank-group-label" style="margin-bottom:8px;">Capacity Legend</div>
+      <div style="font-size:0.72rem; color:var(--mid); line-height:1.6;">
+        <div>🟢 Available for new batch</div>
+        <div>🔴 In use / occupied</div>
+        <div style="margin-top:6px; font-size:0.66rem;">
+          <strong>Rack</strong> = racking valve<br>
+          <strong>Sample</strong> = sample port<br>
+          <strong>Dump</strong> = dump valve
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="content">
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab('schedule')">Schedule & Batches</div>
+      <div class="tab" onclick="switchTab('analysis')">Resource Analysis</div>
+      <div class="tab" onclick="switchTab('timeline')">Timeline</div>
+    </div>
+
+    <!-- SCHEDULE TAB -->
+    <div id="tab-schedule" class="tab-content active">
+      <div class="section">
+        <div class="section-title">Add New Batch</div>
+        <div class="batch-builder">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Batch Name</label>
+              <input type="text" id="batchName" placeholder="e.g. Wildflower Traditional">
+            </div>
+            <div class="form-group">
+              <label>Mead Type</label>
+              <select id="meadType" onchange="updateTypeDefaults()">
+                <option value="traditional">Traditional</option>
+                <option value="melomel">Melomel</option>
+                <option value="metheglin">Metheglin</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Honey Varietal</label>
+              <input type="text" id="honeyVarietal" placeholder="e.g. Wildflower, Clover">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Assign Tank</label>
+              <select id="tankSelect"></select>
+            </div>
+            <div class="form-group">
+              <label>Start Date</label>
+              <input type="date" id="startDate">
+            </div>
+            <div class="form-group">
+              <label>Est. Ferment Duration (days)</label>
+              <input type="number" id="fermentDays" value="60" min="1">
+            </div>
+          </div>
+          <div class="form-row" id="extraIngredientRow">
+            <div class="form-group" id="fruitGroup" style="display:none">
+              <label>Fruit (lbs)</label>
+              <input type="number" id="fruitLbs" value="50" min="0">
+            </div>
+            <div class="form-group" id="spiceGroup" style="display:none">
+              <label>Spice / Additions</label>
+              <input type="text" id="spiceNotes" placeholder="e.g. 2 oz cinnamon, vanilla">
+            </div>
+            <div class="form-group">
+              <label>Notes</label>
+              <input type="text" id="batchNotes" placeholder="Moon phase, yeast strain, etc.">
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-primary" onclick="addBatch()">+ Add Batch</button>
+            <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+            <span id="formMsg" style="font-size:0.75rem; color:var(--red-accent); margin-left:8px;"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Active & Planned Batches</div>
+        <div id="alertArea"></div>
+        <div id="scheduleTable">
+          <div class="empty-state">
+            <div class="big">🍯</div>
+            <p>No batches scheduled yet. Add your first batch above.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYSIS TAB -->
+    <div id="tab-analysis" class="tab-content">
+      <div class="section">
+        <div class="section-title">Capacity Overview</div>
+        <div class="analysis-grid" id="statCards"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Ingredient Requirements</div>
+        <div class="ingredient-grid" id="ingredientSummary"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Tank Capability Notes</div>
+        <div class="alert alert-warn">
+          ⚠️ The <strong>300 L</strong> and <strong>Marchisio 500 L</strong> tanks have drain-only valves — no racking valve, no sample port. Plan to fully empty these tanks; partial racking is not possible. Batch should ideally be complete-clear before moving to these.
+        </div>
+        <div class="alert alert-info">
+          ℹ️ The <strong>Zottel 80 gal</strong> tanks rack with ~5 gal waste vs. ~1 gal for Spike CF-30s. Factor this into final volume calculations for bottling.
+        </div>
+        <div id="tankCapabilityTable"></div>
+      </div>
+    </div>
+
+    <!-- TIMELINE TAB -->
+    <div id="tab-timeline" class="tab-content">
+      <div class="section">
+        <div class="section-title">Fermentation Timeline</div>
+        <div class="timeline-wrap" id="timelineViz">
+          <div class="empty-state">
+            <div class="big">📅</div>
+            <p>Add batches with start dates to see the timeline.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// =====================
+// DATA MODEL
+// =====================
+
+const TANKS = [
+  // Spike CF-30 x10
+  ...Array.from({length:10}, (_,i) => ({
+    id: `spike-${i+1}`,
+    name: `Spike CF-30 #${i+1}`,
+    maker: 'Spike',
+    liters: 150,
+    gallons: 40,
+    rackingValve: true,
+    samplePort: false,
+    dumpValve: true,
+    rackingWaste_gal: 1,
+    group: 'spike',
+    honeyPer40gal: 120, // base unit is 40 gal
+  })),
+  // Zottel x2
+  ...Array.from({length:2}, (_,i) => ({
+    id: `zottel-${i+1}`,
+    name: `Zottel 80gal #${i+1}`,
+    maker: 'Zottel',
+    liters: 300,
+    gallons: 80,
+    rackingValve: true,
+    samplePort: true,
+    dumpValve: true,
+    rackingWaste_gal: 5,
+    group: 'zottel',
+    honeyPer40gal: 120,
+  })),
+  // 300 L drain-only
+  {
+    id: 'tank300',
+    name: '300 L Drain-Only',
+    maker: 'Unknown',
+    liters: 300,
+    gallons: 79,
+    rackingValve: false,
+    samplePort: false,
+    dumpValve: true,
+    rackingWaste_gal: 0,
+    group: 'tank300',
+    honeyPer40gal: 120,
+    drainOnly: true,
+  },
+  // Marchisio 500 L
+  {
+    id: 'marchisio',
+    name: 'Marchisio 500 L',
+    maker: 'Marchisio',
+    liters: 500,
+    gallons: 132,
+    rackingValve: false,
+    samplePort: false,
+    dumpValve: true,
+    rackingWaste_gal: 0,
+    group: 'marchisio',
+    honeyPer40gal: 120,
+    drainOnly: true,
+  },
+];
+
+const MEAD_TYPES = {
+  traditional: { label: 'Traditional', color: 'type-traditional', honeyPer40: 120, fruitPer40: 0, hasFruit: false, hasSpice: false },
+  melomel:     { label: 'Melomel',     color: 'type-melomel',     honeyPer40: 120, fruitPer40: 50, hasFruit: true,  hasSpice: false },
+  metheglin:   { label: 'Metheglin',   color: 'type-metheglin',   honeyPer40: 120, fruitPer40: 0,  hasFruit: false, hasSpice: true },
+};
+
+let batches = [];
+let batchIdCounter = 1;
+
+// =====================
+// RENDER SIDEBAR
+// =====================
+
+function renderTank(tank) {
+  const occupied = batches.find(b => b.tankId === tank.id && !b.complete);
+  const statusClass = occupied ? 'in-use' : 'available';
+  const badgeClass = occupied ? 'badge-inuse' : 'badge-avail';
+  const badgeText = occupied ? 'In Use' : 'Available';
+
+  const caps = [
+    { key: 'rackingValve', label: 'Rack' },
+    { key: 'samplePort',   label: 'Sample' },
+    { key: 'dumpValve',    label: 'Dump' },
+  ];
+
+  return `
+    <div class="tank-card ${statusClass}" onclick="selectTank('${tank.id}')">
+      <div class="tank-name">${tank.name}</div>
+      <div class="tank-meta">${tank.gallons} gal / ${tank.liters} L · ${tank.rackingWaste_gal ? tank.rackingWaste_gal + ' gal rack waste' : 'drain-only'}</div>
+      ${occupied ? `<div class="tank-meta" style="color:var(--red-accent); margin-top:2px;">${occupied.name}</div>` : ''}
+      <div class="capability-icons">
+        ${caps.map(c => `<span class="cap-icon ${tank[c.key] ? '' : 'missing'}">${c.label}</span>`).join('')}
+      </div>
+      <span class="tank-badge ${badgeClass}">${badgeText}</span>
+    </div>
+  `;
+}
+
+function renderSidebar() {
+  document.getElementById('spike-tanks').innerHTML =
+    TANKS.filter(t => t.group === 'spike').map(renderTank).join('');
+  document.getElementById('zottel-tanks').innerHTML =
+    TANKS.filter(t => t.group === 'zottel').map(renderTank).join('');
+  document.getElementById('tank300').innerHTML =
+    TANKS.filter(t => t.group === 'tank300').map(renderTank).join('');
+  document.getElementById('marchisio-tank').innerHTML =
+    TANKS.filter(t => t.group === 'marchisio').map(renderTank).join('');
+}
+
+function selectTank(tankId) {
+  document.getElementById('tankSelect').value = tankId;
+}
+
+// =====================
+// TANK SELECT DROPDOWN
+// =====================
+
+function populateTankSelect() {
+  const sel = document.getElementById('tankSelect');
+  sel.innerHTML = '<option value="">— Select Tank —</option>';
+  TANKS.forEach(t => {
+    const occupied = batches.find(b => b.tankId === t.id && !b.complete);
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = `${t.name} (${t.gallons}gal)${occupied ? ' [IN USE]' : ''}`;
+    if (occupied) opt.style.color = '#c62828';
+    sel.appendChild(opt);
+  });
+}
+
+// =====================
+// FORM LOGIC
+// =====================
+
+function updateTypeDefaults() {
+  const type = document.getElementById('meadType').value;
+  const info = MEAD_TYPES[type];
+  document.getElementById('fruitGroup').style.display = info.hasFruit ? 'block' : 'none';
+  document.getElementById('spiceGroup').style.display = info.hasSpice ? 'block' : 'none';
+}
+
+function clearForm() {
+  document.getElementById('batchName').value = '';
+  document.getElementById('honeyVarietal').value = '';
+  document.getElementById('batchNotes').value = '';
+  document.getElementById('fruitLbs').value = 50;
+  document.getElementById('spiceNotes').value = '';
+  document.getElementById('tankSelect').value = '';
+  document.getElementById('formMsg').textContent = '';
+  document.getElementById('startDate').value = '';
+  document.getElementById('fermentDays').value = 60;
+}
+
+function addBatch() {
+  const name = document.getElementById('batchName').value.trim();
+  const type = document.getElementById('meadType').value;
+  const varietal = document.getElementById('honeyVarietal').value.trim();
+  const tankId = document.getElementById('tankSelect').value;
+  const startDate = document.getElementById('startDate').value;
+  const fermentDays = parseInt(document.getElementById('fermentDays').value) || 60;
+  const notes = document.getElementById('batchNotes').value.trim();
+  const fruitLbs = parseFloat(document.getElementById('fruitLbs').value) || 0;
+  const spiceNotes = document.getElementById('spiceNotes').value.trim();
+  const msg = document.getElementById('formMsg');
+
+  if (!name) { msg.textContent = 'Batch name required.'; return; }
+  if (!tankId) { msg.textContent = 'Please select a tank.'; return; }
+
+  const tank = TANKS.find(t => t.id === tankId);
+  const typeInfo = MEAD_TYPES[type];
+
+  // Scale ingredients to tank size (base = 40 gal Spike)
+  const scaleFactor = tank.gallons / 40;
+  const honey = Math.round(typeInfo.honeyPer40 * scaleFactor);
+  const fruit = typeInfo.hasFruit ? Math.round(fruitLbs * scaleFactor) : 0;
+
+  // Loss model per batch:
+  //   Racking valve waste: per tank spec (1 gal Spike, 5 gal Zottel, 0 drain-only)
+  //   Lees loss: ~1 gal per 40 gal, scaled to tank size
+  //   Fruit loss (melomel only): ~5 gal per 40 gal, scaled to tank size
+  const leesLoss = Math.round(1 * scaleFactor * 10) / 10;
+  const fruitLoss = typeInfo.hasFruit ? Math.round(5 * scaleFactor * 10) / 10 : 0;
+  const miscLoss = Math.round(1 * scaleFactor * 10) / 10;
+  const totalLoss = tank.rackingWaste_gal + leesLoss + fruitLoss + miscLoss;
+  const netVolume = Math.max(0, Math.round((tank.gallons - totalLoss) * 10) / 10);
+
+  // Warn if tank already in use
+  const alreadyUsed = batches.find(b => b.tankId === tankId && !b.complete);
+
+  const batch = {
+    id: batchIdCounter++,
+    name,
+    type,
+    varietal,
+    tankId,
+    tankName: tank.name,
+    tankGallons: tank.gallons,
+    startDate,
+    fermentDays,
+    notes,
+    fruitLbs: fruit,
+    spiceNotes: type === 'metheglin' ? spiceNotes : '',
+    honeyLbs: honey,
+    netVolume,
+    rackWaste: tank.rackingWaste_gal,
+    leesLoss,
+    fruitLoss,
+    miscLoss,
+    totalLoss,
+    scaleFactor,
+    complete: false,
+    drainOnly: !!tank.drainOnly,
+    hasRack: tank.rackingValve,
+    hasSample: tank.samplePort,
+  };
+
+  if (alreadyUsed) {
+    if (!confirm(`Warning: ${tank.name} is currently assigned to "${alreadyUsed.name}". Add anyway?`)) return;
+  }
+
+  batches.push(batch);
+  msg.textContent = '';
+  clearForm();
+  renderAll();
+}
+
+function removeBatch(id) {
+  batches = batches.filter(b => b.id !== id);
+  renderAll();
+}
+
+function toggleComplete(id) {
+  const b = batches.find(b => b.id === id);
+  if (b) b.complete = !b.complete;
+  renderAll();
+}
+
+// =====================
+// SCHEDULE TABLE
+// =====================
+
+function renderScheduleTable() {
+  const container = document.getElementById('scheduleTable');
+  if (batches.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="big">🍯</div><p>No batches scheduled yet. Add your first batch above.</p></div>`;
+    return;
+  }
+
+  const sorted = [...batches].sort((a,b) => (a.startDate || '').localeCompare(b.startDate || ''));
+
+  const rows = sorted.map(b => {
+    const typeInfo = MEAD_TYPES[b.type];
+    const endDate = b.startDate ? (() => {
+      const d = new Date(b.startDate);
+      d.setDate(d.getDate() + b.fermentDays);
+      return d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    })() : '—';
+
+    const warnings = [];
+    if (b.drainOnly) warnings.push('Drain-only tank: plan for full-empty transfer');
+    if (!b.hasRack && !b.drainOnly) warnings.push('No racking valve');
+    if (!b.hasSample) warnings.push('No sample port');
+    if (b.complete) return '';
+
+    // Bottling estimate: 375mL bottles (standard for Run Amok Mead)
+    const netGals = b.netVolume;
+    const netLiters = netGals * 3.785;
+    const bottles375 = Math.floor(netLiters / 0.375);
+
+    return `
+      <tr style="${b.complete ? 'opacity:0.5;' : ''}">
+        <td>
+          <div style="font-weight:500;">${b.name}</div>
+          ${b.varietal ? `<div style="font-size:0.72rem; color:var(--mid);">${b.varietal}</div>` : ''}
+          ${b.notes ? `<div class="bottling-note">${b.notes}</div>` : ''}
+        </td>
+        <td><span class="type-badge ${typeInfo.color}">${typeInfo.label}</span></td>
+        <td style="font-family:'DM Mono',monospace; font-size:0.8rem;">${b.tankName}<br><span style="font-size:0.65rem; color:var(--mid);">${b.tankGallons} gal</span></td>
+        <td style="font-family:'DM Mono',monospace; font-size:0.8rem;">
+          <strong>${b.honeyLbs} lbs</strong> honey
+          ${b.fruitLbs ? `<br>${b.fruitLbs} lbs fruit` : ''}
+          ${b.spiceNotes ? `<br><span style="font-size:0.7rem; color:var(--mid);">${b.spiceNotes}</span>` : ''}
+        </td>
+        <td style="font-family:'DM Mono',monospace; font-size:0.75rem;">
+          ${b.startDate ? new Date(b.startDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}<br>
+          <span style="color:var(--mid);">→ ${endDate}</span><br>
+          <span style="font-size:0.65rem;">${b.fermentDays}d</span>
+        </td>
+        <td style="font-family:'DM Mono',monospace; font-size:0.75rem;">
+          <strong>${netGals} gal</strong> net<br>
+          <span style="font-size:0.65rem; color:var(--mid);">${bottles375} × 375ml</span>
+          <br><span style="font-size:0.62rem; color:#c62828;">−${b.rackWaste}gal valve${b.leesLoss ? ` −${b.leesLoss}gal lees` : ''}${b.fruitLoss ? ` −${b.fruitLoss}gal fruit` : ''} −${b.miscLoss}gal misc</span>
+        </td>
+        <td>
+          ${warnings.map(w => `<div class="warning-chip">⚠ ${w}</div>`).join('')}
+        </td>
+        <td>
+          <div class="row-actions">
+            <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.6rem;" onclick="toggleComplete(${b.id})">✓ Done</button>
+            <button class="btn btn-danger" style="padding:4px 8px; font-size:0.6rem;" onclick="removeBatch(${b.id})">✕</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th>Batch</th>
+          <th>Type</th>
+          <th>Tank</th>
+          <th>Ingredients</th>
+          <th>Dates</th>
+          <th>Yield / Bottles</th>
+          <th>Flags</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// =====================
+// ALERTS
+// =====================
+
+function renderAlerts() {
+  const area = document.getElementById('alertArea');
+  const alerts = [];
+
+  // Check for double-booked tanks
+  const tankUsage = {};
+  batches.filter(b => !b.complete).forEach(b => {
+    if (!tankUsage[b.tankId]) tankUsage[b.tankId] = [];
+    tankUsage[b.tankId].push(b.name);
+  });
+  Object.entries(tankUsage).forEach(([tId, bNames]) => {
+    if (bNames.length > 1) {
+      const t = TANKS.find(t => t.id === tId);
+      alerts.push(`<div class="alert alert-warn">⚠️ <strong>${t.name}</strong> is assigned to multiple active batches: ${bNames.join(', ')}</div>`);
+    }
+  });
+
+  area.innerHTML = alerts.join('');
+}
+
+// =====================
+// ANALYSIS TAB
+// =====================
+
+function renderAnalysis() {
+  const active = batches.filter(b => !b.complete);
+  const totalHoney = active.reduce((s, b) => s + b.honeyLbs, 0);
+  const totalFruit = active.reduce((s, b) => s + b.fruitLbs, 0);
+  const totalGals = active.reduce((s, b) => s + b.tankGallons, 0);
+  const totalNetGals = active.reduce((s, b) => s + b.netVolume, 0);
+  const totalBottles375 = active.reduce((s, b) => s + Math.floor(b.netVolume * 3.785 / 0.375), 0);
+  const availTanks = TANKS.length - active.map(b=>b.tankId).filter((v,i,a)=>a.indexOf(v)===i).length;
+
+  document.getElementById('statCards').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-value">${active.length}</div>
+      <div class="stat-label">Active Batches</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${availTanks}</div>
+      <div class="stat-label">Tanks Available</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${totalHoney.toLocaleString()}</div>
+      <div class="stat-label">Lbs Honey Needed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${totalBottles375.toLocaleString()}</div>
+      <div class="stat-label">Est. 375ml Bottles</div>
+    </div>
+  `;
+
+  // By type
+  const byType = {};
+  active.forEach(b => {
+    if (!byType[b.type]) byType[b.type] = { honey: 0, fruit: 0, batches: 0, gallons: 0 };
+    byType[b.type].honey += b.honeyLbs;
+    byType[b.type].fruit += b.fruitLbs;
+    byType[b.type].batches++;
+    byType[b.type].gallons += b.tankGallons;
+  });
+
+  const typeCards = Object.entries(byType).map(([type, data]) => {
+    const info = MEAD_TYPES[type];
+    return `
+      <div class="ingredient-card">
+        <h4><span class="type-badge ${info.color}">${info.label}</span></h4>
+        <div class="ingredient-line"><span>${data.batches} batch${data.batches!==1?'es':''}</span><span class="qty">${data.gallons} gal total</span></div>
+        <div class="ingredient-line"><span>Honey</span><span class="qty">${data.honey} lbs</span></div>
+        ${data.fruit ? `<div class="ingredient-line"><span>Fruit</span><span class="qty">${data.fruit} lbs</span></div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  const summaryCard = `
+    <div class="ingredient-card" style="border-color:var(--amber); background:var(--amber-pale);">
+      <h4>TOTALS (All Active)</h4>
+      <div class="ingredient-line"><span>Total volume</span><span class="qty">${totalGals} gal</span></div>
+      <div class="ingredient-line"><span>Net yield</span><span class="qty">${totalNetGals} gal</span></div>
+      <div class="ingredient-line"><span>Honey</span><span class="qty">${totalHoney.toLocaleString()} lbs</span></div>
+      ${totalFruit ? `<div class="ingredient-line"><span>Fruit</span><span class="qty">${totalFruit.toLocaleString()} lbs</span></div>` : ''}
+      <div class="ingredient-line"><span>375ml bottles est.</span><span class="qty">${totalBottles375.toLocaleString()}</span></div>
+    </div>
+  `;
+
+  document.getElementById('ingredientSummary').innerHTML = (active.length ? typeCards : '') + summaryCard;
+
+  // Tank capability table
+  const capRows = TANKS.map(t => {
+    const occupied = batches.find(b => b.tankId === t.id && !b.complete);
+    return `
+      <tr>
+        <td style="font-family:'DM Mono',monospace; font-size:0.78rem;">${t.name}</td>
+        <td>${t.gallons} gal / ${t.liters} L</td>
+        <td>${t.rackingValve ? '✅' : '❌'}</td>
+        <td>${t.samplePort ? '✅' : '❌'}</td>
+        <td>${t.dumpValve ? '✅' : '❌'}</td>
+        <td style="font-family:'DM Mono',monospace;">${t.rackingWaste_gal ? t.rackingWaste_gal + ' gal' : '—'}</td>
+        <td>${occupied ? `<span style="color:var(--red-accent); font-size:0.75rem;">${occupied.name}</span>` : '<span style="color:var(--green-accent); font-size:0.75rem;">Available</span>'}</td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('tankCapabilityTable').innerHTML = `
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th>Tank</th><th>Volume</th><th>Rack Valve</th><th>Sample Port</th><th>Dump Valve</th><th>Rack Waste</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>${capRows}</tbody>
+    </table>
+  `;
+}
+
+// =====================
+// TIMELINE
+// =====================
+
+function renderTimeline() {
+  const container = document.getElementById('timelineViz');
+  const withDates = batches.filter(b => b.startDate && !b.complete);
+
+  if (withDates.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="big">📅</div><p>Add batches with start dates to see the timeline.</p></div>`;
+    return;
+  }
+
+  // Find date range
+  const starts = withDates.map(b => new Date(b.startDate));
+  const ends = withDates.map(b => {
+    const d = new Date(b.startDate); d.setDate(d.getDate() + b.fermentDays); return d;
+  });
+  const minDate = new Date(Math.min(...starts));
+  const maxDate = new Date(Math.max(...ends));
+  const totalDays = Math.ceil((maxDate - minDate) / 86400000) + 1;
+
+  const TYPE_COLORS = {
+    traditional: '#C8860A',
+    melomel: '#C2185B',
+    metheglin: '#3F51B5',
+  };
+
+  const rows = withDates.map(b => {
+    const start = new Date(b.startDate);
+    const end = new Date(b.startDate);
+    end.setDate(end.getDate() + b.fermentDays);
+
+    const leftPct = ((start - minDate) / 86400000) / totalDays * 100;
+    const widthPct = (b.fermentDays / totalDays) * 100;
+    const color = TYPE_COLORS[b.type];
+
+    return `
+      <div class="timeline-row">
+        <div class="timeline-label" title="${b.tankName}">${b.name}</div>
+        <div class="timeline-bar-wrap">
+          <div class="timeline-bar" style="left:${leftPct}%; width:${widthPct}%; background:${color};" title="${b.tankName} · ${b.fermentDays}d">
+            ${b.tankName.replace('Spike CF-30 ','').replace('Zottel 80gal ','Z').replace('Marchisio 500 L','M').replace('300 L Drain-Only','300L')} · ${b.fermentDays}d
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  // Date axis labels
+  const labelCount = Math.min(8, totalDays);
+  const axisLabels = Array.from({length: labelCount+1}, (_,i) => {
+    const d = new Date(minDate);
+    d.setDate(d.getDate() + Math.round(i * totalDays / labelCount));
+    return `<span style="position:absolute; left:${i/labelCount*100}%; transform:translateX(-50%); font-family:'DM Mono',monospace; font-size:0.58rem; color:var(--mid);">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="margin-left:98px; position:relative; height:18px; margin-bottom:8px; min-width:400px;">${axisLabels}</div>
+    ${rows.join('')}
+    <div style="margin-top:12px; display:flex; gap:16px; margin-left:98px;">
+      ${Object.entries(TYPE_COLORS).map(([t,c])=>`<span style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:0.62rem;"><span style="width:12px;height:12px;background:${c};border-radius:2px;display:inline-block;"></span>${MEAD_TYPES[t].label}</span>`).join('')}
+    </div>
+  `;
+}
+
+// =====================
+// TAB SWITCHING
+// =====================
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+// =====================
+// PERSISTENCE
+// =====================
+
+const STORAGE_KEY = 'ram_production_batches';
+
+function saveToLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ batches, batchIdCounter }));
+    const el = document.getElementById('saveStatus');
+    el.textContent = 'Saved ' + new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    el.style.opacity = '0.8';
+    setTimeout(() => { el.style.opacity = '0.4'; }, 2000);
+  } catch(e) {
+    console.warn('localStorage save failed:', e);
+  }
+}
+
+function loadFromLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (data.batches && Array.isArray(data.batches)) {
+      batches = data.batches;
+      batchIdCounter = data.batchIdCounter || (batches.length + 1);
+      return true;
+    }
+  } catch(e) {
+    console.warn('localStorage load failed:', e);
+  }
+  return false;
+}
+
+function exportJSON() {
+  const data = { 
+    exported: new Date().toISOString(), 
+    version: 1,
+    batches, 
+    batchIdCounter 
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `ram-production-${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.batches || !Array.isArray(data.batches)) {
+        alert('Invalid backup file — no batch data found.');
+        return;
+      }
+      if (!confirm(`Import ${data.batches.length} batch(es) from backup dated ${data.exported ? new Date(data.exported).toLocaleDateString() : 'unknown'}?\n\nThis will REPLACE your current data.`)) return;
+      batches = data.batches;
+      batchIdCounter = data.batchIdCounter || (batches.length + 1);
+      saveToLocal();
+      renderAll();
+    } catch(err) {
+      alert('Could not read backup file. Make sure it is a valid RAM export.');
+    }
+  };
+  reader.readAsText(file);
+  // Reset input so same file can be re-imported if needed
+  event.target.value = '';
+}
+
+// =====================
+// RENDER ALL
+// =====================
+
+function renderAll() {
+  renderSidebar();
+  populateTankSelect();
+  renderAlerts();
+  renderScheduleTable();
+  renderAnalysis();
+  renderTimeline();
+  saveToLocal();
+}
+
+// =====================
+// INIT
+// =====================
+
+// Load saved data if available
+const hadSavedData = loadFromLocal();
+
+// Set today as default start date
+document.getElementById('startDate').valueAsDate = new Date();
+updateTypeDefaults();
+renderAll();
+
+if (hadSavedData) {
+  const el = document.getElementById('saveStatus');
+  el.textContent = `${batches.filter(b=>!b.complete).length} active batch(es) restored`;
+  el.style.opacity = '0.8';
+  setTimeout(() => { el.style.opacity = '0.4'; }, 3000);
+}
+</script>
+</body>
+</html>
