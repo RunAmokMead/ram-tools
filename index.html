@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Run Amok Mead — Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --amber: #C8860A;
+    --amber-light: #E8A820;
+    --amber-pale: #FDF3DC;
+    --amber-deep: #7A5000;
+    --ink: #1A1208;
+    --cream: #F7F1E3;
+    --cream-dark: #EDE4CE;
+    --mid: #8B7355;
+    --border: #D4B896;
+    --honey: rgba(200,134,10,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Crimson Pro', Georgia, serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* TEXTURE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(200,134,10,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(200,134,10,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HEADER */
+  .header {
+    position: relative;
+    z-index: 10;
+    padding: 60px 40px 48px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #fff 0%, var(--cream) 100%);
+  }
+
+  .header-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 16px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .header-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.8rem, 6vw, 4.5rem);
+    font-weight: 900;
+    color: var(--ink);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+
+  .header-logo span {
+    color: var(--amber);
+    font-style: italic;
+  }
+
+  .header-sub {
+    font-family: 'Crimson Pro', serif;
+    font-size: 1.1rem;
+    color: var(--mid);
+    font-style: italic;
+    font-weight: 300;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s ease 0.2s both;
+  }
+
+  .header-rule {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 320px;
+    margin: 0 auto;
+    animation: fadeUp 0.6s ease 0.3s both;
+  }
+  .header-rule::before, .header-rule::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .header-rule-icon {
+    font-size: 1.1rem;
+  }
+
+  /* MAIN */
+  .main {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 32px 80px;
+  }
+
+  /* SECTION LABEL */
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* TOOL GRID */
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 48px;
+  }
+
+  /* TOOL CARD */
+  .tool-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    animation: fadeUp 0.5s ease both;
+    position: relative;
+  }
+
+  .tool-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(200,134,10,0.15);
+  }
+
+  .tool-card.coming-soon {
+    opacity: 0.65;
+  }
+  .tool-card.coming-soon:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .tool-card-accent {
+    height: 4px;
+    background: var(--amber);
+  }
+  .tool-card.coming-soon .tool-card-accent {
+    background: var(--border);
+  }
+
+  .tool-card-body {
+    padding: 22px 24px 20px;
+  }
+
+  .tool-icon {
+    font-size: 1.8rem;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .tool-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+
+  .tool-desc {
+    font-size: 0.92rem;
+    color: var(--mid);
+    line-height: 1.55;
+    margin-bottom: 16px;
+    font-weight: 300;
+  }
+
+  .tool-features {
+    list-style: none;
+    margin-bottom: 20px;
+  }
+
+  .tool-features li {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--mid);
+    padding: 3px 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .tool-features li::before {
+    content: '–';
+    color: var(--amber);
+    font-weight: 700;
+  }
+
+  .tool-card-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--cream-dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--cream);
+  }
+
+  .tool-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+  .status-live { background: #E8F5E9; color: #2D5A27; border: 1px solid #81C784; }
+  .status-soon { background: #FFF8E1; color: #7A5000; border: 1px solid #FFB300; }
+  .status-planned { background: #f5f5f5; color: #999; border: 1px solid #ddd; }
+
+  .tool-launch {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.15s;
+    background: var(--amber);
+    color: #fff;
+  }
+  .tool-launch:hover { background: var(--amber-deep); }
+  .tool-launch.disabled {
+    background: var(--border);
+    color: var(--mid);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* FOOTER */
+  .footer {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 32px 40px;
+    border-top: 1px solid var(--border);
+    background: var(--ink);
+  }
+
+  .footer-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--amber-pale);
+    margin-bottom: 4px;
+  }
+
+  .footer-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem;
+    color: var(--mid);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .tool-card:nth-child(1) { animation-delay: 0.1s; }
+  .tool-card:nth-child(2) { animation-delay: 0.2s; }
+  .tool-card:nth-child(3) { animation-delay: 0.3s; }
+  .tool-card:nth-child(4) { animation-delay: 0.4s; }
+  .tool-card:nth-child(5) { animation-delay: 0.5s; }
+  .tool-card:nth-child(6) { animation-delay: 0.6s; }
+
+  /* MOBILE */
+  @media (max-width: 600px) {
+    .header { padding: 40px 20px 32px; }
+    .main { padding: 32px 16px 60px; }
+    .tool-grid { grid-template-columns: 1fr; gap: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-eyebrow">West Gardiner, Maine · Est. Gold Star Honeybees LLC</div>
+  <div class="header-logo">Run <span>Amok</span> Mead</div>
+  <div class="header-sub">Internal Tools &amp; Production Systems</div>
+  <div class="header-rule"><span class="header-rule-icon">🍯</span></div>
+</header>
+
+<main class="main">
+
+  <div class="section-label">Active Tools</div>
+
+  <div class="tool-grid">
+
+    <!-- PRODUCTION SCHEDULER -->
+    <div class="tool-card">
+      <div class="tool-card-accent"></div>
+      <div class="tool-card-body">
+        <span class="tool-icon">📋</span>
+        <div class="tool-name">Production Scheduler</div>
+        <div class="tool-desc">Full lifecycle tracking for every batch from fermentation through bottling, with moon-phase planning and supplier order management.</div>
+        <ul class="tool-features">
+          <li>Batch lifecycle — 9 stages from fermenting to bottled</li>
+          <li>Moon calendar with 90-day planning horizon</li>
+          <li>Supplier order deadlines — C&N, Crystal's, NW Wild Foods</li>
+          <li>Gravity log, 1–5 rating, fruit removal warnings</li>
+          <li>Tank inventory — all 14 tanks with live status</li>
+          <li>Bottling yield estimates in 375ml bottles</li>
+        </ul>
+      </div>
+      <div class="tool-card-footer">
+        <span class="tool-status status-live">● Live</span>
+        <a href="./ram-production-scheduler.html" class="tool-launch">Open Tool →</a>
+      </div>
+    </div>
+
+    <!-- BATCH NOTES (COMING SOON) -->
+    <div class="tool-card coming-soon">
+      <div class="tool-card-accent"></div>
+      <div class="tool-card-body">
+        <span class="tool-icon">📓</span>
+        <div class="tool-name">Batch Notes</div>
+        <div class="tool-desc">Connect to Google Drive batch documentation — pull recipe notes, gravity logs, and tasting notes directly into the scheduler.</div>
+        <ul class="tool-features">
+          <li>Google Drive integration</li>
+          <li>Per-batch document linking</li>
+          <li>Recipe versioning and history</li>
+          <li>Tasting notes and observations</li>
+        </ul>
+      </div>
+      <div class="tool-card-footer">
+        <span class="tool-status status-soon">◐ In Development</span>
+        <span class="tool-launch disabled">Coming Soon</span>
+      </div>
+    </div>
+
+    <!-- CRM (COMING SOON) -->
+    <div class="tool-card coming-soon">
+      <div class="tool-card-accent"></div>
+      <div class="tool-card-body">
+        <span class="tool-icon">🤝</span>
+        <div class="tool-name">CRM</div>
+        <div class="tool-desc">Customer and prospect management connected to SalesBinder — view accounts, invoices, and wholesale contacts in one place.</div>
+        <ul class="tool-features">
+          <li>SalesBinder API integration</li>
+          <li>Customers, prospects, invoices</li>
+          <li>Wholesale account tracking</li>
+          <li>Maine restaurant & retail contacts</li>
+        </ul>
+      </div>
+      <div class="tool-card-footer">
+        <span class="tool-status status-soon">◐ In Development</span>
+        <span class="tool-launch disabled">Coming Soon</span>
+      </div>
+    </div>
+
+    <!-- WHOLESALE PLANNER (PLANNED) -->
+    <div class="tool-card coming-soon">
+      <div class="tool-card-accent"></div>
+      <div class="tool-card-body">
+        <span class="tool-icon">📦</span>
+        <div class="tool-name">Wholesale Planner</div>
+        <div class="tool-desc">Track wholesale accounts, price lists, and outreach campaigns. Built for the Maine market and out-of-state expansion via LibDib.</div>
+        <ul class="tool-features">
+          <li>Maine wholesale price list</li>
+          <li>Account outreach tracking</li>
+          <li>LibDib out-of-state pipeline</li>
+          <li>Constant Contact campaign integration</li>
+        </ul>
+      </div>
+      <div class="tool-card-footer">
+        <span class="tool-status status-planned">○ Planned</span>
+        <span class="tool-launch disabled">Planned</span>
+      </div>
+    </div>
+
+    <!-- INVENTORY (PLANNED) -->
+    <div class="tool-card coming-soon">
+      <div class="tool-card-accent"></div>
+      <div class="tool-card-body">
+        <span class="tool-icon">🗃</span>
+        <div class="tool-name">Inventory</div>
+        <div class="tool-desc">Honey varietal stock, fruit on hand, bottles, and supplies — connected to the Production Scheduler for real-time needs calculation.</div>
+        <ul class="tool-features">
+          <li>Honey stock by varietal and supplier</li>
+          <li>IQF fruit inventory</li>
+          <li>Bottle and supply tracking</li>
+          <li>Auto-deduct on batch start</li>
+        </ul>
+      </div>
+      <div class="tool-card-footer">
+        <span class="tool-status status-planned">○ Planned</span>
+        <span class="tool-launch disabled">Planned</span>
+      </div>
+    </div>
+
+    <!-- FARMERS MARKET (PLANNED) -->
+    <div class="tool-card coming-soon">
+      <div class="tool-card-accent"></div>
+      <div class="tool-card-body">
+        <span class="tool-icon">🛖</span>
+        <div class="tool-name">Market Finder</div>
+        <div class="tool-desc">Filterable directory of farmers markets and events — plan your season, track attendance, and manage event inventory.</div>
+        <ul class="tool-features">
+          <li>Maine market directory</li>
+          <li>Filter by date, location, type</li>
+          <li>Season planning calendar</li>
+          <li>Event inventory checklists</li>
+        </ul>
+      </div>
+      <div class="tool-card-footer">
+        <span class="tool-status status-planned">○ Planned</span>
+        <span class="tool-launch disabled">Planned</span>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-logo">Run Amok Mead</div>
+  <div class="footer-sub">Gold Star Honeybees LLC · West Gardiner, Maine · Internal Use Only</div>
+</footer>
+
+</body>
+</html>
