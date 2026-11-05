@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Run Amok Mead — Production</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --amber: #C8860A; --amber-light: #E8A820; --amber-pale: #FDF3DC; --amber-deep: #7A5000;
+  --ink: #1A1208; --cream: #FAF6EE; --mid: #8B7355; --border: #D4B896;
+  --honey: rgba(200,134,10,0.10); --red: #8B2515; --red-pale: #FDECEA;
+  --green: #2D5A27; --green-pale: #E8F5E9; --blue: #1A4A7A; --blue-pale: #E3EEF9;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
+
+header { background: var(--ink); color: var(--amber-pale); padding: 12px 20px; display: flex; align-items: center; gap: 14px; border-bottom: 3px solid var(--amber); position: sticky; top: 0; z-index: 100; }
+header h1 { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 900; }
+header .sub { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--amber); letter-spacing: 0.1em; text-transform: uppercase; }
+.hdr-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+#saveStatus { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--amber); }
+
+.app { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 53px); }
+
+/* SIDEBAR */
+.sidebar { background: #fff; border-right: 1px solid var(--border); overflow-y: auto; max-height: calc(100vh - 53px); position: sticky; top: 53px; }
+.sb-sec { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.sb-title { font-family: 'DM Mono', monospace; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--mid); margin-bottom: 6px; }
+.tank-item { display: flex; align-items: flex-start; gap: 7px; padding: 5px 6px; border-radius: 4px; margin-bottom: 2px; font-size: 0.75rem; }
+.tdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+.tdot.avail { background: var(--green); } .tdot.used { background: var(--red); } .tdot.leased { background: var(--amber); }
+.tname { font-family: 'DM Mono', monospace; font-size: 0.68rem; }
+.tmeta { font-size: 0.62rem; color: var(--mid); }
+.tcaps { display: flex; gap: 2px; margin-top: 2px; }
+.cap { font-size: 0.52rem; padding: 1px 4px; border-radius: 2px; background: var(--honey); border: 1px solid var(--border); color: var(--amber-deep); font-family: 'DM Mono', monospace; }
+.cap.no { background: #f5f5f5; color: #bbb; border-color: #e0e0e0; text-decoration: line-through; }
+
+/* MAIN */
+.main { overflow-y: auto; max-height: calc(100vh - 53px); }
+.tab-bar { display: flex; border-bottom: 2px solid var(--border); background: #fff; position: sticky; top: 0; z-index: 50; }
+.tab { font-family: 'DM Mono', monospace; font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.07em; padding: 10px 16px; cursor: pointer; color: var(--mid); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.tab.active { color: var(--amber-deep); border-bottom-color: var(--amber); font-weight: 500; }
+.tab-content { display: none; padding: 18px 22px; }
+.tab-content.active { display: block; }
+.sec-title { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--amber-deep); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+.sec-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* BUTTONS */
+.btn { font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 7px 14px; border-radius: 4px; border: none; cursor: pointer; transition: all 0.15s; }
+.btn-primary { background: var(--amber); color: #fff; } .btn-primary:hover { background: var(--amber-deep); }
+.btn-secondary { background: transparent; color: var(--amber); border: 1.5px solid var(--amber); } .btn-secondary:hover { background: var(--honey); }
+.btn-danger { background: transparent; color: var(--red); border: 1.5px solid var(--red); } .btn-danger:hover { background: var(--red-pale); }
+.btn-ghost { background: transparent; color: var(--mid); border: 1px solid var(--border); } .btn-ghost:hover { border-color: var(--amber); color: var(--amber); }
+.btn-sm { padding: 4px 8px; font-size: 0.58rem; }
+
+/* FORMS */
+.fg { margin-bottom: 10px; }
+.fg label { display: block; font-family: 'DM Mono', monospace; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--mid); margin-bottom: 3px; }
+.fg input, .fg select, .fg textarea { width: 100%; padding: 7px 9px; border: 1.5px solid var(--border); border-radius: 4px; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--ink); background: var(--cream); }
+.fg input:focus, .fg select:focus { outline: none; border-color: var(--amber); background: #fff; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+
+/* BATCH CARDS */
+.batch-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 10px; transition: box-shadow 0.15s; }
+.batch-card:hover { box-shadow: 0 2px 10px rgba(200,134,10,0.12); }
+.bch { padding: 11px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.bch:hover { background: var(--honey); }
+.spip { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.btitle { flex: 1; }
+.bname { font-weight: 600; font-size: 0.88rem; }
+.bmeta { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--mid); margin-top: 1px; }
+.tbadge { font-family: 'DM Mono', monospace; font-size: 0.56rem; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; }
+.type-traditional { background: #FFF3CD; color: #7A5000; border: 1px solid #E8A820; }
+.type-melomel { background: #FCE4EC; color: #880E4F; border: 1px solid #E91E63; }
+.type-metheglin { background: #E8EAF6; color: #283593; border: 1px solid #3F51B5; }
+.type-experimental { background: #F3E5F5; color: #6A1B9A; border: 1px solid #9C27B0; }
+.nchip { font-family: 'DM Mono', monospace; font-size: 0.56rem; padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
+.nchip.ready { background: var(--green-pale); color: var(--green); border: 1px solid #81C784; }
+.nchip.urgent { background: #FFF8E1; color: #7A5000; border: 1px solid #FFB300; }
+.nchip.warn { background: var(--red-pale); color: var(--red); border: 1px solid #EF9A9A; }
+.nchip.wait { background: #f5f5f5; color: var(--mid); border: 1px solid var(--border); }
+.stars { display: flex; gap: 1px; }
+.star { font-size: 0.72rem; color: var(--border); }
+.star.on { color: var(--amber); }
+
+/* DETAIL */
+.bdetail { padding: 14px; background: var(--cream); border-top: 1px solid var(--border); }
+.pipeline { display: flex; margin-bottom: 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.pstage { flex: 1; text-align: center; padding: 7px 3px; font-family: 'DM Mono', monospace; font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--mid); border-right: 1px solid var(--border); }
+.pstage:last-child { border-right: none; }
+.pstage.done { background: var(--green-pale); color: var(--green); }
+.pstage.cur { background: var(--amber-pale); color: var(--amber-deep); font-weight: 600; }
+.pstage .pd { font-size: 0.48rem; display: block; margin-top: 1px; opacity: 0.75; }
+.dgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.dblock { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 11px; }
+.dblock h4 { font-family: 'DM Mono', monospace; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--mid); margin-bottom: 7px; }
+.dline { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px dotted var(--border); font-size: 0.78rem; }
+.dline:last-child { border-bottom: none; }
+.mono { font-family: 'DM Mono', monospace; }
+.gentry { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px dotted var(--border); font-family: 'DM Mono', monospace; font-size: 0.7rem; }
+.gentry:last-child { border-bottom: none; }
+.gadd { display: flex; gap: 5px; margin-top: 7px; }
+.gadd input { flex: 1; padding: 5px 7px; border: 1.5px solid var(--border); border-radius: 4px; font-size: 0.78rem; background: var(--cream); }
+.rbtns { display: flex; gap: 5px; }
+.rbtn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); background: #fff; cursor: pointer; font-size: 0.78rem; font-family: 'DM Mono', monospace; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.rbtn:hover { border-color: var(--amber); }
+.rbtn.sel { border-color: var(--amber); background: var(--amber); color: #fff; }
+.rnote { font-size: 0.66rem; color: var(--mid); font-style: italic; margin-top: 4px; }
+.brow { display: flex; gap: 7px; align-items: flex-end; flex-wrap: wrap; }
+.brow .fg { flex: 1; min-width: 120px; margin-bottom: 0; }
+
+/* ALERTS */
+.alert { padding: 9px 13px; border-radius: 5px; font-size: 0.78rem; margin-bottom: 9px; border-left: 3px solid; }
+.alert-warn { background: #FFF8E1; border-color: #FFB300; color: #5D4037; }
+.alert-info { background: var(--blue-pale); border-color: var(--blue); color: var(--blue); }
+.alert-ok { background: var(--green-pale); border-color: var(--green); color: var(--green); }
+.alert-err { background: var(--red-pale); border-color: var(--red); color: var(--red); }
+.alert-plain { background: #fff; border-color: var(--border); color: var(--mid); }
+
+/* STATS */
+.statgrid { display: grid; grid-template-columns: repeat(5,1fr); gap: 9px; margin-bottom: 14px; }
+.statcard { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 11px; text-align: center; }
+.statval { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: var(--amber); }
+.statlbl { font-family: 'DM Mono', monospace; font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--mid); margin-top: 2px; }
+
+/* TABLE */
+.tbl { width: 100%; border-collapse: collapse; font-size: 0.78rem; background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.tbl th { background: var(--ink); color: var(--amber-pale); font-family: 'DM Mono', monospace; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.07em; padding: 8px 11px; text-align: left; }
+.tbl td { padding: 8px 11px; border-bottom: 1px solid #f0e8d8; vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--honey); }
+
+/* TIMELINE */
+.tlwrap { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow-x: auto; }
+.tlrow { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.tllbl { font-family: 'DM Mono', monospace; font-size: 0.6rem; width: 110px; flex-shrink: 0; color: var(--mid); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tltrack { flex: 1; background: #f5efe5; border-radius: 3px; height: 18px; position: relative; min-width: 450px; }
+.tlbar { position: absolute; height: 100%; border-radius: 3px; display: flex; align-items: center; padding: 0 5px; font-family: 'DM Mono', monospace; font-size: 0.52rem; color: #fff; white-space: nowrap; overflow: hidden; }
+
+/* MODAL */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(26,18,8,0.55); z-index: 200; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 10px; padding: 22px; width: 500px; max-width: 95vw; max-height: 90vh; overflow-y: auto; border-top: 4px solid var(--amber); }
+.modal h2 { font-family: 'Playfair Display', serif; font-size: 1.15rem; margin-bottom: 14px; color: var(--amber-deep); }
+.mfooter { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--border); }
+
+
+/* PLANNING TAB */
+.moon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.moon-card { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; cursor: pointer; transition: all 0.15s; position: relative; }
+.moon-card:hover { border-color: var(--amber); box-shadow: 0 2px 8px rgba(200,134,10,0.15); }
+.moon-card.full { border-left: 3px solid var(--amber); }
+.moon-card.new { border-left: 3px solid var(--ink); }
+.moon-card.past { opacity: 0.45; cursor: default; }
+.moon-card.soon { background: var(--amber-pale); border-color: var(--amber); }
+.moon-card.has-batch { background: var(--green-pale); border-color: var(--green); }
+.moon-type { font-family: 'DM Mono', monospace; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+.moon-type.full { color: var(--amber); }
+.moon-type.new { color: var(--ink); }
+.moon-date-big { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+.moon-name { font-size: 0.68rem; color: var(--mid); font-style: italic; margin-top: 2px; }
+.moon-days { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--mid); margin-top: 4px; }
+.moon-batch-tag { font-family: 'DM Mono', monospace; font-size: 0.58rem; background: var(--green-pale); color: var(--green); border: 1px solid #81C784; border-radius: 3px; padding: 1px 5px; margin-top: 4px; display: inline-block; }
+
+.planned-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+.planned-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.planned-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
+.inv-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.inv-row label { font-family: 'DM Mono', monospace; font-size: 0.6rem; text-transform: uppercase; color: var(--mid); width: 110px; flex-shrink: 0; }
+.inv-row input { width: 80px; padding: 4px 7px; border: 1.5px solid var(--border); border-radius: 4px; font-size: 0.8rem; background: var(--cream); font-family: 'DM Mono', monospace; }
+.inv-row input:focus { outline: none; border-color: var(--amber); }
+.inv-status { font-family: 'DM Mono', monospace; font-size: 0.68rem; padding: 2px 8px; border-radius: 3px; }
+.inv-ok { background: var(--green-pale); color: var(--green); border: 1px solid #81C784; }
+.inv-short { background: var(--red-pale); color: var(--red); border: 1px solid #EF9A9A; }
+.inv-partial { background: #FFF8E1; color: #7A5000; border: 1px solid #FFB300; }
+
+.order-card { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; margin-bottom: 8px; border-left: 4px solid var(--border); }
+.order-card.urgent { border-left-color: var(--red); }
+.order-card.soon { border-left-color: #FFB300; }
+.order-card.ok { border-left-color: var(--green); }
+.order-supplier { font-family: 'DM Mono', monospace; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--mid); }
+.order-item { font-weight: 600; font-size: 0.88rem; margin: 2px 0; }
+.order-deadline { font-family: 'DM Mono', monospace; font-size: 0.7rem; }
+.order-note { font-size: 0.72rem; color: var(--mid); font-style: italic; margin-top: 3px; }
+
+/* PRINT */
+@media print {
+  .sidebar, .tab-bar, .hdr-right, .btn, .gadd, .rbtns, .bch span:last-child { display: none !important; }
+  .app { grid-template-columns: 1fr; }
+  .batch-card { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
+  .bdetail { display: block !important; }
+  header { position: static; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Run Amok Mead</h1>
+    <div class="sub">Production Scheduler &amp; Lifecycle Tracker</div>
+  </div>
+  <div class="hdr-right">
+    <span id="saveStatus"></span>
+    <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
+    <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇ Export</button>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer;">⬆ Import<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
+    <button class="btn btn-primary btn-sm" onclick="openAdd()">+ New Batch</button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sb-sec"><div class="sb-title">Spike CF-30 · 40 gal · ×10</div><div id="sb-spike"></div></div>
+    <div class="sb-sec"><div class="sb-title">Zottel · #5 &amp; #6 · 80 gal</div><div id="sb-zottel"></div></div>
+    <div class="sb-sec"><div class="sb-title">Jaklic · Tank #13 · 300L · Drain Only</div><div id="sb-t13"></div></div>
+    <div class="sb-sec"><div class="sb-title">Marchisio · Tank #14 · 500L · Drain Only</div><div id="sb-t14"></div></div>
+    <div class="sb-sec">
+      <div class="sb-title">Legend</div>
+      <div style="font-size:0.7rem;color:var(--mid);line-height:2.2;">
+        <div><span style="color:var(--green)">●</span> Available</div>
+        <div><span style="color:var(--red)">●</span> In use (owned)</div>
+        <div><span style="color:var(--amber)">●</span> In use (leased)</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab('batches')">Batches</div>
+      <div class="tab" onclick="switchTab('scheduler')">Scheduler</div>
+      <div class="tab" onclick="switchTab('analysis')">Analysis</div>
+      <div class="tab" onclick="switchTab('timeline')">Timeline</div>
+      <div class="tab" onclick="switchTab('planning')">🌕 Planning</div>
+    </div>
+
+    <div id="tab-batches" class="tab-content active">
+      <div id="alertArea"></div>
+      <div id="batchList"></div>
+    </div>
+
+    <div id="tab-scheduler" class="tab-content">
+      <div style="margin-bottom:20px;"><div class="sec-title">What To Do Next</div><div id="recArea"></div></div>
+      <div><div class="sec-title">All Batches by Stage</div><div id="schedTbl"></div></div>
+    </div>
+
+    <div id="tab-analysis" class="tab-content">
+      <div style="margin-bottom:20px;"><div class="sec-title">Capacity Overview</div><div class="statgrid" id="statGrid"></div></div>
+      <div style="margin-bottom:20px;"><div class="sec-title">Ingredients (Active)</div><div id="ingGrid"></div></div>
+      <div><div class="sec-title">Tank Inventory</div><div id="tankTbl"></div></div>
+    </div>
+
+    <div id="tab-timeline" class="tab-content">
+      <div class="sec-title">Fermentation Timeline</div>
+      <div class="tlwrap" id="tlviz"></div>
+    </div>
+      <div id="tab-planning" class="tab-content">
+      <div style="margin-bottom:20px;"><div class="sec-title">Upcoming Moon Dates</div><div id="moonCal"></div></div>
+      <div style="margin-bottom:20px;"><div class="sec-title">Planned Batches</div><div id="plannedList"></div></div>
+      <div><div class="sec-title">Ingredient & Order Checklist</div><div id="orderChecklist"></div></div>
+    </div>
+  </main>
+</div>
+
+<!-- ADD BATCH MODAL -->
+<div class="overlay" id="addModal">
+  <div class="modal">
+    <h2>New Batch</h2>
+    <div class="grid2">
+      <div class="fg"><label>Batch Name</label><input type="text" id="f_name" placeholder="e.g. GT-Marmeleiro"></div>
+      <div class="fg"><label>Mead Type</label><select id="f_type" onchange="updType()">
+        <option value="traditional">Traditional</option>
+        <option value="melomel">Melomel</option>
+        <option value="metheglin">Metheglin</option>
+        <option value="experimental">Experimental (Fruit + Spice)</option>
+      </select></div>
+    </div>
+    <div class="grid2">
+      <div class="fg"><label>Honey Varietal</label><input type="text" id="f_var" placeholder="e.g. Marmeleiro, Clover"></div>
+      <div class="fg"><label>Assign Tank</label><select id="f_tank"></select></div>
+    </div>
+    <div class="grid2" id="f_frow" style="display:none;">
+      <div class="fg"><label>Fruit(s) Added</label><input type="text" id="f_ft" placeholder="e.g. Red raspberries"></div>
+      <div class="fg"><label>Fruit Weight (lbs)</label><input type="number" id="f_flbs" value="50" min="0"></div>
+    </div>
+    <div class="fg" id="f_srow" style="display:none;"><label>Spice / Additions</label><input type="text" id="f_spice" placeholder="e.g. Rosemary, vanilla beans"></div>
+    <div class="grid3">
+      <div class="fg"><label>Start Date</label><input type="date" id="f_start"></div>
+      <div class="fg"><label>Est. Ferment Days</label><input type="number" id="f_days" value="60"></div>
+      <div class="fg"><label>Moon Phase</label><select id="f_moon">
+        <option value="">— None —</option>
+        <option>New Moon (waxing)</option><option>NEW MOON</option><option>New Moon (waning)</option>
+        <option>Full Moon (waxing)</option><option>FULL MOON</option><option>Full Moon (waning)</option>
+      </select></div>
+    </div>
+    <div class="fg"><label>Notes</label><input type="text" id="f_notes" placeholder="Yeast strain, source, other details"></div>
+    <div style="font-size:0.75rem;color:var(--red);min-height:16px;" id="f_err"></div>
+    <div class="mfooter">
+      <button class="btn btn-ghost" onclick="closeAdd()">Cancel</button>
+      <button class="btn btn-primary" onclick="addBatch()">Add Batch</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+const STAGES = [
+  {id:'fermenting', label:'Fermenting',  color:'#4CAF50'},
+  {id:'rack1',      label:'Rack #1',     color:'#FF9800'},
+  {id:'resting1',   label:'Resting',     color:'#2196F3'},
+  {id:'rack2',      label:'Rack #2',     color:'#FF9800'},
+  {id:'resting2',   label:'Resting',     color:'#2196F3'},
+  {id:'fining',     label:'Fine & Stab', color:'#9C27B0'},
+  {id:'filtering',  label:'Filter',      color:'#607D8B'},
+  {id:'ready',      label:'Ready',       color:'#C8860A'},
+  {id:'bottled',    label:'Bottled',     color:'#1A1208'},
+];
+const SID = STAGES.map(s=>s.id);
+
+const TYPES = {
+  traditional:  {label:'Traditional',  cls:'type-traditional',  fruit:false, spice:false},
+  melomel:      {label:'Melomel',      cls:'type-melomel',      fruit:true,  spice:false},
+  metheglin:    {label:'Metheglin',    cls:'type-metheglin',    fruit:false, spice:true },
+  experimental: {label:'Experimental', cls:'type-experimental', fruit:true,  spice:true },
+};
+
+const TANKS = [
+  ...[1,2,3,4,7,8,9,10,11,12].map(n=>({
+    id:`spike-${n}`, name:`Spike CF-30 #${n}`, number:n, group:'spike',
+    maker:'Spike', liters:150, gallons:40,
+    rack:true, sample:true, dump:true, waste:1, leased:[9,10,11,12].includes(n), drainOnly:false,
+  })),
+  ...[5,6].map(n=>({
+    id:`zottel-${n}`, name:`Zottel #${n}`, number:n, group:'zottel',
+    maker:'Zottel', liters:300, gallons:80,
+    rack:true, sample:true, dump:true, waste:5, leased:false, drainOnly:false,
+  })),
+  {id:'tank13', name:'Jaklic Tank #13', number:13, group:'tank13', maker:'Jaklic', liters:300, gallons:79, rack:false, sample:false, dump:true, waste:0, leased:false, drainOnly:true},
+  {id:'tank14', name:'Marchisio Tank #14', number:14, group:'tank14', maker:'Marchisio', liters:500, gallons:132, rack:false, sample:false, dump:true, waste:0, leased:false, drainOnly:true},
+];
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function daysSince(d){return d?Math.floor((new Date()-new Date(d))/86400000):0;}
+function fmt(d){return d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';}
+function si(id){return SID.indexOf(id);}
+function sinfo(id){return STAGES.find(s=>s.id===id)||STAGES[0];}
+function btls(gal){return Math.floor(gal*3.785/0.375);}
+function availTanks(){const used=new Set(batches.filter(b=>b.stage!=='bottled').map(b=>b.tankId));return TANKS.filter(t=>!used.has(t.id));}
+
+function mkBatch(o){
+  const t=TANKS.find(x=>x.id===o.tankId)||TANKS[0];
+  const sf=t.gallons/40;
+  const hasFruit=TYPES[o.type||'traditional'].fruit;
+  const fl=hasFruit?Math.round(5*sf*10)/10:0;
+  const ll=Math.round(1*sf*10)/10;
+  const ml=Math.round(1*sf*10)/10;
+  const tot=t.waste+ll+fl+ml;
+  const net=Math.max(0,Math.round((t.gallons-tot)*10)/10);
+  return {
+    stage:'fermenting', stageDates:{}, gravityLog:[], rating:null,
+    bottleCount:null, bottleDate:null,
+    fruitTypes:'', fruitLbs:hasFruit?Math.round(50*sf):0,
+    spiceNotes:'', moonPhase:'', notes:'',
+    honeyLbs:Math.round(120*sf), sf,
+    leesLoss:ll, fruitLoss:fl, miscLoss:ml, rackWaste:t.waste, totalLoss:tot, netVolume:net,
+    drainOnly:t.drainOnly, hasRack:t.rack, hasSample:t.sample,
+    tankGallons:t.gallons, tankName:t.name,
+    ...o,
+  };
+}
+
+// ============================================================
+// FRUIT REMOVAL LOGIC
+// ============================================================
+
+function fruitStatus(b) {
+  // Only applies to melomel and experimental with fruit added
+  if (!['melomel','experimental'].includes(b.type)) return null;
+  if (!b.fruitTypes) return null;
+  // If fruit already removed, no warning
+  if (b.fruitRemoved) return null;
+  // If batch is past resting1 stage, fruit should definitely be gone
+  const stageIdx = si(b.stage);
+  const fermIdx = si('fermenting');
+  const days = daysSince(b.startDate);
+  if (days < 30) return { type: 'ok', msg: `Fruit removal window opens in ${30 - days}d (Day 30)`, days };
+  if (days >= 30 && days < 45) return { type: 'warn', msg: `Fruit removal window open — Day ${days} (remove by Day 60)`, days };
+  if (days >= 45 && days < 60) return { type: 'urgent', msg: `⚠ Remove fruit soon — Day ${days} of 60`, days };
+  if (days >= 60 && !b.fruitRemoved) return { type: 'overdue', msg: `⛔ Fruit overdue for removal — Day ${days}!`, days };
+  return null;
+}
+
+function gcalLink(batchName, dateStr, title, description, durationMins=60) {
+  const start = dateStr.replace(/-/g,'');
+  // All-day event
+  const end = start;
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: start + '/' + start,
+    details: description,
+    ctz: 'America/New_York'
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function addDaysToDate(dateStr, days) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0,10);
+}
+
+function nextAction(b){
+  const dss=daysSince(b.startDate);
+  const dstage=daysSince(b.stageDates[b.stage]);
+  if(b.stage==='bottled') return {label:'Bottled ✓',type:'done'};
+  if(b.stage==='fermenting'){
+    if(dss>=42) return {label:'Ready for Rack #1',type:'ready',next:'rack1'};
+    return {label:`Rack #1 in ~${42-dss}d`,type:'wait'};
+  }
+  if(b.stage==='rack1') return {label:'Log Rack #1 & continue',type:'urgent',next:'resting1'};
+  if(b.stage==='resting1'){
+    if(dstage>=21) return {label:'Ready for Rack #2',type:'ready',next:'rack2'};
+    return {label:`Rack #2 in ~${21-dstage}d`,type:'wait'};
+  }
+  if(b.stage==='rack2') return {label:'Log Rack #2 & continue',type:'urgent',next:'resting2'};
+  if(b.stage==='resting2'){
+    if(b.drainOnly) return {label:'⚠ Drain-only — needs transfer before fining',type:'warn',next:'fining'};
+    return {label:'Ready to Fine & Stabilize',type:'ready',next:'fining'};
+  }
+  if(b.stage==='fining'){
+    if(dstage>=2) return {label:'Ready to Filter',type:'ready',next:'filtering'};
+    return {label:`Filter in ${2-dstage}d`,type:'wait'};
+  }
+  if(b.stage==='filtering') return {label:'Ready to assess & rate',type:'ready',next:'ready'};
+  if(b.stage==='ready'){
+    if(!b.rating) return {label:'Rate this batch first',type:'urgent'};
+    if(b.rating<3) return {label:`Rated ${b.rating}/5 — below threshold`,type:'warn'};
+    return {label:`Rated ${b.rating}/5 — Ready to bottle!`,type:'ready',next:'bottled'};
+  }
+  return {label:'In progress',type:'wait'};
+}
+
+// ============================================================
+// DATA
+// ============================================================
+
+let batches=[], batchId=11, expanded=null;
+
+const STORAGE_KEY='ram_v6';
+
+function save(){
+  try{
+    localStorage.setItem(STORAGE_KEY,JSON.stringify({batches,batchId,planned,plannedId}));
+    const el=document.getElementById('saveStatus');
+    el.textContent='✓ Saved '+new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    setTimeout(()=>el.textContent='',3000);
+  }catch(e){}
+}
+function loadLocal(){
+  try{
+    const r=localStorage.getItem(STORAGE_KEY);
+    if(!r) return false;
+    const d=JSON.parse(r);
+    if(d.batches?.length){batches=d.batches;batchId=d.batchId||batches.length+1;if(d.planned)planned=d.planned;if(d.plannedId)plannedId=d.plannedId;return true;}
+  }catch(e){}
+  return false;
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify({exported:new Date().toISOString(),v:6,batches,batchId},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`ram-production-${new Date().toISOString().slice(0,10)}.json`;a.click();
+}
+function importJSON(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(!confirm(`Import ${d.batches?.length} batches? This replaces current data.`)) return;
+      batches=d.batches;batchId=d.batchId||batches.length+1;
+      save();renderAll();
+    }catch{alert('Invalid file.');}
+  };
+  r.readAsText(f);e.target.value='';
+}
+
+const INITIAL=[
+  mkBatch({id:1,name:'GT-Marmeleiro',type:'traditional',varietal:'Marmeleiro',tankId:'spike-1',startDate:'2025-08-23',fermentDays:120,stage:'resting2',stageDates:{fermenting:'2025-08-23',rack1:'2025-10-04',resting1:'2025-10-04',rack2:'2025-11-15',resting2:'2025-11-15'}}),
+  mkBatch({id:2,name:'GT-Lychee',type:'traditional',varietal:'Lychee',tankId:'spike-2',startDate:'2025-10-07',fermentDays:120,stage:'resting1',stageDates:{fermenting:'2025-10-07',rack1:'2025-11-18',resting1:'2025-11-18'}}),
+  mkBatch({id:3,name:"Talisker's Rainbow",type:'experimental',varietal:'TBD',fruitTypes:'Bilberries',fruitLbs:50,spiceNotes:'Rosemary',tankId:'spike-3',startDate:'2025-07-13',fermentDays:120,stage:'ready',stageDates:{fermenting:'2025-07-13',rack1:'2025-08-24',resting1:'2025-08-24',rack2:'2025-10-05',resting2:'2025-10-05',fining:'2025-11-01',filtering:'2025-11-15',ready:'2025-11-20'}}),
+  mkBatch({id:4,name:'Imbolc Red Backpack',type:'melomel',varietal:'Marmeleiro',fruitTypes:'Red currants',fruitLbs:50,tankId:'spike-7',startDate:'2026-02-01',fermentDays:120,stage:'fermenting',stageDates:{fermenting:'2026-02-01'}}),
+  mkBatch({id:5,name:'Crimson in Clover',type:'melomel',varietal:'Clover',fruitTypes:'Red raspberries',fruitLbs:50,tankId:'spike-8',startDate:'2025-11-05',fermentDays:120,stage:'resting1',stageDates:{fermenting:'2025-11-05',rack1:'2025-12-17',resting1:'2025-12-17'}}),
+  mkBatch({id:6,name:"Geoff's Chocolate Waltz",type:'metheglin',varietal:'Dark Wildflower',spiceNotes:'Dutch cocoa, cacao nibs, vanilla TBD',tankId:'spike-9',startDate:'2025-12-20',fermentDays:120,stage:'fermenting',stageDates:{fermenting:'2025-12-20'},notes:'Dutch processed cocoa powder, cacao nibs, vanilla beans (varietal TBD)'}),
+  mkBatch({id:7,name:'Pink Moon',type:'melomel',varietal:'TBD',fruitTypes:'Blueberries',fruitLbs:50,moonPhase:'FULL MOON',tankId:'spike-10',startDate:'2026-04-02',fermentDays:120,stage:'fermenting',stageDates:{fermenting:'2026-04-02'},notes:'Honey varietal TBD'}),
+  mkBatch({id:8,name:'Plum & Plummer',type:'melomel',varietal:'TBD',fruitTypes:'Local plums',fruitLbs:50,tankId:'spike-12',startDate:'2026-02-20',fermentDays:120,stage:'fermenting',stageDates:{fermenting:'2026-02-20'},notes:'Honey varietal TBD'}),
+  mkBatch({id:9,name:'GT-Clover',type:'traditional',varietal:'Clover',tankId:'tank13',startDate:'2025-10-21',fermentDays:120,stage:'resting1',stageDates:{fermenting:'2025-10-21',rack1:'2025-12-01',resting1:'2025-12-01'}}),
+  mkBatch({id:10,name:'Valhalla Can Wait',type:'traditional',varietal:'Knotweed',tankId:'zottel-5',startDate:'2025-11-20',fermentDays:120,stage:'resting1',stageDates:{fermenting:'2025-11-20',rack1:'2026-01-01',resting1:'2026-01-01'},notes:'10% of proceeds support Operation Reboot Outdoors. Always Knotweed honey.'}),
+];
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+
+function renderSidebar(){
+  const used=new Set(batches.filter(b=>b.stage!=='bottled').map(b=>b.tankId));
+  function th(t){
+    const inUse=used.has(t.id);
+    const b=batches.find(x=>x.tankId===t.id&&x.stage!=='bottled');
+    const dc=inUse?(t.leased?'leased':'used'):'avail';
+    return `<div class="tank-item">
+      <div class="tdot ${dc}"></div>
+      <div>
+        <div class="tname">#${t.number} · ${t.gallons}gal${t.leased?' (L)':''}</div>
+        ${b?`<div class="tmeta">${b.name}</div>`:''}
+        <div class="tcaps">
+          <span class="cap ${t.rack?'':'no'}">Rack</span>
+          <span class="cap ${t.sample?'':'no'}">Sample</span>
+          <span class="cap">Dump</span>
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('sb-spike').innerHTML=TANKS.filter(t=>t.group==='spike').map(th).join('');
+  document.getElementById('sb-zottel').innerHTML=TANKS.filter(t=>t.group==='zottel').map(th).join('');
+  document.getElementById('sb-t13').innerHTML=TANKS.filter(t=>t.group==='tank13').map(th).join('');
+  document.getElementById('sb-t14').innerHTML=TANKS.filter(t=>t.group==='tank14').map(th).join('');
+}
+
+// ============================================================
+// BATCH LIST
+// ============================================================
+
+function renderBatchList(){
+  const el=document.getElementById('batchList');
+  if(!batches.length){el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--mid);"><div style="font-family:'Playfair Display',serif;font-size:2.5rem;color:var(--border);">🍯</div><p style="margin-top:8px;font-size:0.85rem;">No batches yet. Click + New Batch to start.</p></div>`;return;}
+  const active=batches.filter(b=>b.stage!=='bottled');
+  const done=batches.filter(b=>b.stage==='bottled');
+  function card(b){
+    const s=sinfo(b.stage);
+    const ti=TYPES[b.type];
+    const na=nextAction(b);
+    const nc=na.type==='ready'?'ready':na.type==='urgent'?'urgent':na.type==='warn'?'warn':'wait';
+    const stars=b.rating?Array.from({length:5},(_,i)=>`<span class="star ${i<b.rating?'on':''}">★</span>`).join(''):'';
+    const isExp=expanded===b.id;
+    return `<div class="batch-card" id="bc-${b.id}">
+      <div class="bch" onclick="toggle(${b.id})">
+        <div class="spip" style="background:${s.color}"></div>
+        <div class="btitle">
+          <div class="bname">${b.name}${b.moonPhase?` <span style="color:var(--amber);font-size:0.68rem;">☾ ${b.moonPhase}</span>`:''}</div>
+          <div class="bmeta">${b.tankName} · ${b.varietal||'—'} · ${fmt(b.startDate)}${b.startDate ? ' · <span class="mono" style="color:var(--amber-deep);">Day ' + daysSince(b.startDate) + '</span>' : ''}</div>
+        </div>
+        <span class="tbadge ${ti.cls}">${ti.label}</span>
+        ${stars?`<div class="stars">${stars}</div>`:''}
+        <span class="nchip ${nc}">${na.label}</span>
+        <span style="color:var(--mid);font-size:0.75rem;">${isExp?'▲':'▼'}</span>
+      </div>
+      ${isExp?detail(b):''}
+    </div>`;
+  }
+  let h=active.map(card).join('');
+  if(done.length) h+=`<div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--mid);text-transform:uppercase;letter-spacing:0.08em;margin:18px 0 8px;">Bottled (${done.length})</div>`+done.map(card).join('');
+  el.innerHTML=h;
+}
+
+function detail(b){
+  const idx=si(b.stage);
+  const na=nextAction(b);
+
+  const pipeline=STAGES.map((s,i)=>{
+    const cls=i<idx?'done':i===idx?'cur':'';
+    const d=b.stageDates[s.id]?`<span class="pd">${fmt(b.stageDates[s.id])}</span>`:'';
+    return `<div class="pstage ${cls}">${s.label}${d}</div>`;
+  }).join('');
+
+  const gravRows=b.gravityLog?.length
+    ?b.gravityLog.map((g,i)=>`<div class="gentry"><span>${fmt(g.date)}</span><span style="color:var(--amber-deep);font-weight:500;">${g.sg}</span><span onclick="delG(${b.id},${i})" style="cursor:pointer;color:var(--mid);font-size:0.65rem;">✕</span></div>`).join('')
+    :'<div style="color:var(--mid);font-size:0.72rem;font-style:italic;">No readings yet</div>';
+
+  const rbtns=Array.from({length:5},(_,i)=>{const n=i+1;return `<button class="rbtn ${b.rating===n?'sel':''}" onclick="setRating(${b.id},${n})">${n}</button>`;}).join('');
+  const rnote=b.rating?(b.rating<3?'⚠ Below threshold — not recommended for bottling':b.rating>=4?'✓ Ready to bottle':'✓ Meets minimum threshold'):'Rate to unlock bottling recommendation';
+
+  const ingLines=`
+    <div class="dline"><span>Honey</span><span class="mono">${b.honeyLbs} lbs${b.varietal?' — '+b.varietal:''}</span></div>
+    ${b.fruitTypes?`<div class="dline"><span>Fruit</span><span class="mono">${b.fruitTypes} (${b.fruitLbs} lbs)</span></div>`:''}
+    ${b.spiceNotes?`<div class="dline"><span>Spice</span><span class="mono">${b.spiceNotes}</span></div>`:''}
+    ${b.notes?`<div style="margin-top:7px;font-size:0.7rem;color:var(--mid);font-style:italic;">${b.notes}</div>`:''}
+  `;
+
+  const yieldLines=`
+    <div class="dline"><span>Gross</span><span class="mono">${b.tankGallons} gal</span></div>
+    <div class="dline" style="color:var(--red);"><span>Valve waste</span><span class="mono">−${b.rackWaste} gal</span></div>
+    <div class="dline" style="color:var(--red);"><span>Lees</span><span class="mono">−${b.leesLoss} gal</span></div>
+    ${b.fruitLoss?`<div class="dline" style="color:var(--red);"><span>Fruit</span><span class="mono">−${b.fruitLoss} gal</span></div>`:''}
+    <div class="dline" style="color:var(--red);"><span>Misc</span><span class="mono">−${b.miscLoss} gal</span></div>
+    <div class="dline" style="font-weight:600;padding-top:5px;"><span>Net</span><span class="mono" style="color:var(--amber-deep);">${b.netVolume} gal → ~${btls(b.netVolume)} × 375ml</span></div>
+    ${b.bottleCount?`<div class="dline"><span>Actual</span><span class="mono">${b.bottleCount} btls · ${fmt(b.bottleDate)}</span></div>`:''}
+  `;
+
+  const actBtn=na.next?`<button class="btn btn-primary" onclick="advance(${b.id},'${na.next}')">${na.label}</button>`:'';
+
+  const bottlingForm=(b.stage==='ready'&&b.rating>=3)?`
+    <div class="dblock" style="margin-top:10px;grid-column:span 3;">
+      <h4>Log Bottling Run</h4>
+      <div class="brow">
+        <div class="fg"><label>Date Bottled</label><input type="date" id="bd_d_${b.id}" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="fg"><label>Actual Bottles (375ml)</label><input type="number" id="bd_c_${b.id}" value="${btls(b.netVolume)}" min="1"></div>
+        <button class="btn btn-primary" style="flex-shrink:0;" onclick="logBottle(${b.id})">Log &amp; Complete</button>
+      </div>
+    </div>`:'' ;
+
+  const warnAlert=na.type==='warn'?`<div class="alert alert-warn" style="margin-bottom:10px;">⚠ ${na.label}</div>`:'';
+  const urgAlert=na.type==='urgent'?`<div class="alert alert-info" style="margin-bottom:10px;">→ ${na.label}</div>`:'';
+
+  // Fruit removal warning block
+  const _fs = fruitStatus(b);
+  const fruitAlertHTML = _fs ? (() => {
+    const _cls = _fs.type==='ok'?'alert-plain':_fs.type==='overdue'?'alert-err':'alert-warn';
+    const _rl = b.startDate ? gcalLink(b.name, addDaysToDate(b.startDate,45), 'RAM: Remove fruit from '+b.name, 'Fruit removal window Days 30-60. Started '+fmt(b.startDate)+'. Fruit: '+b.fruitTypes+'. Day 45 reminder.') : '#';
+    const _fl = b.startDate ? gcalLink(b.name, addDaysToDate(b.startDate,58), 'RAM: FINAL fruit removal deadline - '+b.name, 'Fruit MUST be removed by Day 60. Started '+fmt(b.startDate)+'. Fruit: '+b.fruitTypes+'.') : '#';
+    const _cal = (!b.fruitRemoved && b.startDate) ? '<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;"><a href="'+_rl+'" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">&#128197; Add Day-45 Reminder</a><a href="'+_fl+'" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">&#128197; Add Day-58 Warning</a><button class="btn btn-secondary btn-sm" onclick="markFruitRemoved('+b.id+')">&#10003; Mark Fruit Removed</button></div>' : (b.fruitRemoved ? '<div style="margin-top:5px;color:var(--green);font-size:0.75rem;">&#10003; Fruit removed '+fmt(b.fruitRemovedDate)+'</div>' : '');
+    return '<div class="alert '+_cls+'" style="margin-bottom:10px;">&#127827; <strong>Fruit ('+b.fruitTypes+'):</strong> '+_fs.msg+_cal+'</div>';
+  })() : '';
+
+  return `<div class="bdetail">
+    <div class="pipeline">${pipeline}</div>
+    ${fruitAlertHTML}${warnAlert}${urgAlert}
+    <div class="dgrid">
+      <div class="dblock"><h4>Ingredients</h4>${ingLines}</div>
+      <div class="dblock">
+        <h4>Gravity Log</h4>
+        <div>${gravRows}</div>
+        <div class="gadd">
+          <input type="date" id="gd_${b.id}" value="${new Date().toISOString().slice(0,10)}" style="width:120px;">
+          <input type="number" id="gv_${b.id}" placeholder="e.g. 1.050" step="0.001" min="0.990" max="1.200" style="width:85px;">
+          <button class="btn btn-secondary btn-sm" onclick="addG(${b.id})">+ Log</button>
+        </div>
+      </div>
+      <div class="dblock"><h4>Yield</h4>${yieldLines}</div>
+    </div>
+    <div class="dgrid">
+      <div class="dblock">
+        <h4>Batch Rating (1–5)</h4>
+        <div class="rbtns">${rbtns}</div>
+        <div class="rnote">${rnote}</div>
+      </div>
+      <div class="dblock" style="grid-column:span 2;">
+        <h4>Next Action</h4>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap;">
+          ${actBtn}
+          <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="if(confirm('Delete ${b.name}?'))delBatch(${b.id})">✕ Delete</button>
+        </div>
+      </div>
+      ${bottlingForm}
+    </div>
+  </div>`;
+}
+
+function toggle(id){expanded=expanded===id?null:id;renderBatchList();}
+function advance(bId,next){const b=batches.find(x=>x.id===bId);if(!b)return;b.stage=next;if(!b.stageDates)b.stageDates={};b.stageDates[next]=new Date().toISOString().slice(0,10);save();renderAll();}
+function setRating(bId,r){const b=batches.find(x=>x.id===bId);if(b){b.rating=r;save();renderAll();}}
+function addG(bId){const b=batches.find(x=>x.id===bId);if(!b)return;const d=document.getElementById(`gd_${bId}`)?.value;const v=parseFloat(document.getElementById(`gv_${bId}`)?.value);if(!d||isNaN(v)){alert('Enter date and reading.');return;}if(!b.gravityLog)b.gravityLog=[];b.gravityLog.push({date:d,sg:v.toFixed(3)});b.gravityLog.sort((a,b)=>a.date.localeCompare(b.date));save();renderAll();}
+function delG(bId,i){const b=batches.find(x=>x.id===bId);if(b?.gravityLog){b.gravityLog.splice(i,1);save();renderAll();}}
+function logBottle(bId){const b=batches.find(x=>x.id===bId);if(!b)return;const d=document.getElementById(`bd_d_${bId}`)?.value;const c=parseInt(document.getElementById(`bd_c_${bId}`)?.value);if(!d||isNaN(c)){alert('Enter date and count.');return;}b.bottleDate=d;b.bottleCount=c;b.stage='bottled';b.stageDates['bottled']=d;save();renderAll();}
+function delBatch(bId){batches=batches.filter(b=>b.id!==bId);if(expanded===bId)expanded=null;save();renderAll();}
+function markFruitRemoved(bId){
+  const b=batches.find(x=>x.id===bId);
+  if(!b) return;
+  b.fruitRemoved=true;
+  b.fruitRemovedDate=new Date().toISOString().slice(0,10);
+  save();renderAll();
+}
+
+// ============================================================
+// ALERTS
+// ============================================================
+
+function renderAlerts(){
+  const area=document.getElementById('alertArea');
+  const usage={};
+  batches.filter(b=>b.stage!=='bottled').forEach(b=>{if(!usage[b.tankId])usage[b.tankId]=[];usage[b.tankId].push(b.name);});
+  const alerts=Object.entries(usage).filter(([,n])=>n.length>1).map(([tId,n])=>{const t=TANKS.find(x=>x.id===tId);return `<div class="alert alert-err">⚠ <strong>${t?.name}</strong> double-booked: ${n.join(', ')}</div>`;});
+  area.innerHTML=alerts.join('');
+}
+
+// ============================================================
+// SCHEDULER TAB
+// ============================================================
+
+function renderScheduler(){
+  const active=batches.filter(b=>b.stage!=='bottled');
+  const avail=availTanks();
+  let recs='';
+
+  const bottleable=active.filter(b=>b.stage==='ready'&&b.rating>=3);
+  if(bottleable.length) recs+=`<div class="alert alert-ok">🍾 <strong>Ready to bottle (${bottleable.length}):</strong> ${bottleable.map(b=>`<strong>${b.name}</strong> (${b.rating}/5)`).join(', ')} — est. ${bottleable.reduce((s,b)=>s+btls(b.netVolume),0).toLocaleString()} × 375ml. Max 2 batches per bottling day.</div>`;
+
+  const needRate=active.filter(b=>b.stage==='ready'&&!b.rating);
+  if(needRate.length) recs+=`<div class="alert alert-warn">⭐ <strong>Needs rating:</strong> ${needRate.map(b=>`<strong>${b.name}</strong>`).join(', ')}</div>`;
+
+  active.filter(b=>b.drainOnly&&si(b.stage)>=si('resting2')).forEach(b=>{
+    const gal=TANKS.find(t=>t.id===b.tankId)?.gallons||79;
+    const big=avail.filter(t=>!t.drainOnly&&t.gallons>=gal);
+    const spikes=avail.filter(t=>t.group==='spike');
+    if(big.length) recs+=`<div class="alert alert-info">⬆ <strong>${b.name}</strong> needs transfer before fining. Available: <strong>${big[0].name}</strong></div>`;
+    else if(spikes.length>=2) recs+=`<div class="alert alert-warn">⬆ <strong>${b.name}</strong> (${gal} gal, drain-only) can split into 2 Spike tanks: <strong>${spikes[0].name}</strong> + <strong>${spikes[1].name}</strong> via dump valve → Buon Vino coarse filter.</div>`;
+    else recs+=`<div class="alert alert-err">⚠ <strong>${b.name}</strong> needs transfer but not enough tanks are free.</div>`;
+  });
+
+  // Fruit removal warnings in scheduler
+  const fruitWarn=active.filter(b=>{const fs=fruitStatus(b);return fs&&(fs.type==='warn'||fs.type==='urgent'||fs.type==='overdue');});
+  fruitWarn.forEach(b=>{
+    const fs=fruitStatus(b);
+    const cls=fs.type==='overdue'?'alert-err':'alert-warn';
+    recs+=`<div class="alert ${cls}">&#127827; <strong>${b.name}:</strong> ${fs.msg}</div>`;
+  });
+  const rackRdy=active.filter(b=>{const na=nextAction(b);return na.type==='ready'&&(na.next==='rack1'||na.next==='rack2');});
+  if(rackRdy.length) recs+=`<div class="alert alert-info">🪣 <strong>Ready to rack (${rackRdy.length}):</strong> ${rackRdy.map(b=>`<strong>${b.name}</strong>`).join(', ')}</div>`;
+
+  if(avail.length) recs+=`<div class="alert alert-plain">🪣 <strong>${avail.length} tank(s) available:</strong> ${avail.map(t=>t.name).join(', ')}</div>`;
+
+  // Planning alerts — upcoming moons within 21 days with no planned or active batch
+  const plannedDates = new Set(planned.map(p=>p.targetMoon));
+  const activeDates = new Set(batches.filter(b=>b.stage!=='bottled').map(b=>b.startDate));
+  const soonMoons = MOONS.filter(m=>{const du=daysUntil(m.date);return du>=0&&du<=21&&!plannedDates.has(m.date)&&!activeDates.has(m.date);});
+  if(soonMoons.length) soonMoons.forEach(m=>{
+    recs+=`<div class="alert alert-warn">🌕 <strong>${m.type} on ${fmt(m.date)}</strong> (in ${daysUntil(m.date)} days)${m.name?' — '+m.name:''} — no batch planned. <button class="btn btn-ghost btn-sm" style="margin-left:8px;" onclick="switchTab('planning');selectMoon('${m.date}','${m.type}','${m.name}')">Plan Now →</button></div>`;
+  });
+
+  // Order deadline alerts
+  const urgOrders = planned.flatMap(p=>getOrderDeadlines(p).map(o=>({...o,batchName:p.name}))).filter(o=>o.urgency!=='ok');
+  urgOrders.forEach(o=>{
+    const cls = o.urgency==='urgent'?'alert-err':'alert-warn';
+    recs+=`<div class="alert ${cls}">📦 <strong>${o.supplier}:</strong> Order ${o.item} for <strong>${o.batchName}</strong> — ${o.daysUntilOrder<=0?'ORDER NOW':'by '+fmt(o.orderBy)+' ('+o.daysUntilOrder+'d)'}</div>`;
+  });
+
+  document.getElementById('recArea').innerHTML=recs||`<div class="alert alert-plain">No immediate actions needed.</div>`;
+
+  const sorted=[...batches].sort((a,b)=>si(b.stage)-si(a.stage));
+  const rows=sorted.map(b=>{
+    const s=sinfo(b.stage);const ti=TYPES[b.type];const na=nextAction(b);
+    const nc=na.type==='ready'?'ready':na.type==='urgent'?'urgent':na.type==='warn'?'warn':'wait';
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:6px;"><div class="spip" style="background:${s.color}"></div><strong>${b.name}</strong></div></td>
+      <td><span class="tbadge ${ti.cls}">${ti.label}</span></td>
+      <td class="mono" style="font-size:0.72rem;">${b.tankName}</td>
+      <td><span class="nchip" style="background:${s.color}22;color:${s.color};border:1px solid ${s.color}44;">${s.label}</span></td>
+      <td><span class="nchip ${nc}">${na.label}</span></td>
+      <td class="mono" style="font-size:0.7rem;">${b.bottleCount?b.bottleCount+' btls':'~'+btls(b.netVolume)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="switchTab('batches');expanded=${b.id};renderBatchList();">Open →</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('schedTbl').innerHTML=`<table class="tbl"><thead><tr><th>Batch</th><th>Type</th><th>Tank</th><th>Stage</th><th>Next Action</th><th>Bottles</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ============================================================
+// ANALYSIS TAB
+// ============================================================
+
+function renderAnalysis(){
+  const active=batches.filter(b=>b.stage!=='bottled');
+  const avail=availTanks();
+  const honey=active.reduce((s,b)=>s+b.honeyLbs,0);
+  const estBtls=active.reduce((s,b)=>s+btls(b.netVolume),0);
+  const actBtls=batches.filter(b=>b.stage==='bottled').reduce((s,b)=>s+(b.bottleCount||0),0);
+  document.getElementById('statGrid').innerHTML=`
+    <div class="statcard"><div class="statval">${active.length}</div><div class="statlbl">Active Batches</div></div>
+    <div class="statcard"><div class="statval">${avail.length}</div><div class="statlbl">Tanks Available</div></div>
+    <div class="statcard"><div class="statval">${honey.toLocaleString()}</div><div class="statlbl">Lbs Honey Active</div></div>
+    <div class="statcard"><div class="statval">${estBtls.toLocaleString()}</div><div class="statlbl">Est. Bottles</div></div>
+    <div class="statcard"><div class="statval">${actBtls.toLocaleString()}</div><div class="statlbl">Bottles Produced</div></div>
+  `;
+  const byType={};
+  active.forEach(b=>{if(!byType[b.type])byType[b.type]={n:0,honey:0,fruit:0,gal:0};byType[b.type].n++;byType[b.type].honey+=b.honeyLbs;byType[b.type].fruit+=b.fruitLbs;byType[b.type].gal+=b.tankGallons;});
+  document.getElementById('ingGrid').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">`+Object.entries(byType).map(([t,d])=>`<div class="dblock"><h4><span class="tbadge ${TYPES[t].cls}">${TYPES[t].label}</span></h4><div class="dline"><span>${d.n} batch${d.n!==1?'es':''}</span><span class="mono">${d.gal}gal</span></div><div class="dline"><span>Honey</span><span class="mono">${d.honey}lbs</span></div>${d.fruit?`<div class="dline"><span>Fruit</span><span class="mono">${d.fruit}lbs</span></div>`:''}</div>`).join('')+`</div>`;
+  const used=new Set(active.map(b=>b.tankId));
+  const trows=TANKS.map(t=>{const b=active.find(x=>x.tankId===t.id);return `<tr><td class="mono" style="font-size:0.72rem;">${t.name}${t.leased?' <span style="color:var(--amber);font-size:0.62rem;">(leased)</span>':''}</td><td>${t.gallons}gal/${t.liters}L</td><td>${t.rack?'✅':'❌'}</td><td>${t.sample?'✅':'❌'}</td><td>✅</td><td class="mono" style="font-size:0.7rem;">${t.waste?t.waste+' gal':'drain'}</td><td>${b?`<span style="color:var(--red);font-size:0.72rem;">${b.name}</span>`:`<span style="color:var(--green);font-size:0.72rem;">Available</span>`}</td></tr>`;}).join('');
+  document.getElementById('tankTbl').innerHTML=`<table class="tbl"><thead><tr><th>Tank</th><th>Volume</th><th>Rack</th><th>Sample</th><th>Dump</th><th>Waste</th><th>Status</th></tr></thead><tbody>${trows}</tbody></table>`;
+}
+
+// ============================================================
+// TIMELINE
+// ============================================================
+
+function renderTimeline(){
+  const el=document.getElementById('tlviz');
+  const wd=batches.filter(b=>b.startDate&&b.stage!=='bottled');
+  if(!wd.length){el.innerHTML=`<div style="text-align:center;padding:30px;color:var(--mid);">Add batches with start dates to see the timeline.</div>`;return;}
+  const TC={traditional:'#C8860A',melomel:'#C2185B',metheglin:'#3F51B5',experimental:'#9C27B0'};
+  const starts=wd.map(b=>new Date(b.startDate));
+  const ends=wd.map(b=>{const d=new Date(b.startDate);d.setDate(d.getDate()+b.fermentDays);return d;});
+  const mn=new Date(Math.min(...starts)),mx=new Date(Math.max(...ends));
+  const tot=Math.ceil((mx-mn)/86400000)+1;
+  const rows=wd.map(b=>{
+    const lp=((new Date(b.startDate)-mn)/86400000)/tot*100;
+    const wp=(b.fermentDays/tot)*100;
+    return `<div class="tlrow"><div class="tllbl" title="${b.name}">${b.name}</div><div class="tltrack"><div class="tlbar" style="left:${lp}%;width:${wp}%;background:${TC[b.type]};">${b.tankName.replace('Spike CF-30 ','#')} · ${b.fermentDays}d</div></div></div>`;
+  }).join('');
+  const lc=Math.min(8,tot);
+  const axis=Array.from({length:lc+1},(_,i)=>{const d=new Date(mn);d.setDate(d.getDate()+Math.round(i*tot/lc));return `<span style="position:absolute;left:${i/lc*100}%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:0.52rem;color:var(--mid);">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`;}).join('');
+  el.innerHTML=`<div style="margin-left:118px;position:relative;height:15px;margin-bottom:7px;min-width:450px;">${axis}</div>${rows}<div style="margin-top:10px;display:flex;gap:14px;margin-left:118px;">${Object.entries(TC).map(([t,c])=>`<span style="display:flex;align-items:center;gap:3px;font-family:'DM Mono',monospace;font-size:0.58rem;"><span style="width:9px;height:9px;background:${c};border-radius:2px;display:inline-block;"></span>${TYPES[t].label}</span>`).join('')}</div>`;
+}
+
+// ============================================================
+// ADD BATCH MODAL
+// ============================================================
+
+function openAdd(){
+  ['f_name','f_var','f_notes','f_ft','f_spice'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f_flbs').value=50;
+  document.getElementById('f_days').value=60;
+  document.getElementById('f_moon').value='';
+  document.getElementById('f_type').value='traditional';
+  document.getElementById('f_err').textContent='';
+  document.getElementById('f_start').value=new Date().toISOString().slice(0,10);
+  const used=new Set(batches.filter(b=>b.stage!=='bottled').map(b=>b.tankId));
+  const sel=document.getElementById('f_tank');
+  sel.innerHTML='<option value="">— Select Tank —</option>';
+  TANKS.forEach(t=>{const o=document.createElement('option');o.value=t.id;const inUse=used.has(t.id);o.textContent=`${t.name} (${t.gallons}gal)${inUse?' [IN USE]':''}${t.leased?' (L)':''}`;if(inUse)o.style.color='#c62828';sel.appendChild(o);});
+  updType();
+  document.getElementById('addModal').classList.add('open');
+}
+function closeAdd(){document.getElementById('addModal').classList.remove('open');}
+function updType(){const t=document.getElementById('f_type').value;const info=TYPES[t];document.getElementById('f_frow').style.display=info.fruit?'grid':'none';document.getElementById('f_srow').style.display=info.spice?'block':'none';}
+
+function addBatch(){
+  const name=document.getElementById('f_name').value.trim();
+  const type=document.getElementById('f_type').value;
+  const tankId=document.getElementById('f_tank').value;
+  const err=document.getElementById('f_err');
+  if(!name){err.textContent='Batch name required.';return;}
+  if(!tankId){err.textContent='Select a tank.';return;}
+  const used=batches.filter(b=>b.stage!=='bottled').map(b=>b.tankId);
+  if(used.includes(tankId)&&!confirm('Tank is in use. Add anyway?'))return;
+  const start=document.getElementById('f_start').value;
+  const b=mkBatch({
+    id:batchId++, name, type,
+    varietal:document.getElementById('f_var').value.trim(),
+    tankId,
+    startDate:start,
+    fermentDays:parseInt(document.getElementById('f_days').value)||60,
+    notes:document.getElementById('f_notes').value.trim(),
+    fruitTypes:document.getElementById('f_ft').value.trim(),
+    fruitLbs:parseFloat(document.getElementById('f_flbs').value)||50,
+    spiceNotes:document.getElementById('f_spice').value.trim(),
+    moonPhase:document.getElementById('f_moon').value,
+    stage:'fermenting',
+    stageDates:{fermenting:start},
+  });
+  batches.push(b);
+  closeAdd();save();renderAll();
+}
+
+
+// ============================================================
+// MOON CALENDAR DATA
+// ============================================================
+
+const MOONS = [
+  {date:'2025-01-13',type:'FULL MOON',name:'Wolf Moon'},{date:'2025-01-29',type:'NEW MOON',name:''},
+  {date:'2025-02-12',type:'FULL MOON',name:'Snow Moon'},{date:'2025-02-28',type:'NEW MOON',name:''},
+  {date:'2025-03-14',type:'FULL MOON',name:'Worm Moon'},{date:'2025-03-29',type:'NEW MOON',name:''},
+  {date:'2025-04-13',type:'FULL MOON',name:'Pink Moon'},{date:'2025-04-27',type:'NEW MOON',name:''},
+  {date:'2025-05-12',type:'FULL MOON',name:'Flower Moon'},{date:'2025-05-27',type:'NEW MOON',name:''},
+  {date:'2025-06-11',type:'FULL MOON',name:'Strawberry Moon'},{date:'2025-06-25',type:'NEW MOON',name:''},
+  {date:'2025-07-10',type:'FULL MOON',name:'Buck Moon'},{date:'2025-07-24',type:'NEW MOON',name:''},
+  {date:'2025-08-09',type:'FULL MOON',name:'Sturgeon Moon'},{date:'2025-08-23',type:'NEW MOON',name:''},
+  {date:'2025-09-07',type:'FULL MOON',name:'Harvest Moon'},{date:'2025-09-21',type:'NEW MOON',name:''},
+  {date:'2025-10-07',type:'FULL MOON',name:"Hunter's Moon"},{date:'2025-10-21',type:'NEW MOON',name:''},
+  {date:'2025-11-05',type:'FULL MOON',name:'Beaver Moon'},{date:'2025-11-20',type:'NEW MOON',name:''},
+  {date:'2025-12-04',type:'FULL MOON',name:'Cold Moon'},{date:'2025-12-20',type:'NEW MOON',name:''},
+  {date:'2026-01-03',type:'FULL MOON',name:'Wolf Moon'},{date:'2026-01-18',type:'NEW MOON',name:''},
+  {date:'2026-02-01',type:'FULL MOON',name:'Snow Moon'},{date:'2026-02-17',type:'NEW MOON',name:''},
+  {date:'2026-03-03',type:'FULL MOON',name:'Worm Moon'},{date:'2026-03-18',type:'NEW MOON',name:''},
+  {date:'2026-04-02',type:'FULL MOON',name:'Pink Moon'},{date:'2026-04-17',type:'NEW MOON',name:''},
+  {date:'2026-05-01',type:'FULL MOON',name:'Flower Moon / Beltane'},{date:'2026-05-16',type:'NEW MOON',name:''},
+  {date:'2026-05-31',type:'FULL MOON',name:'Strawberry Moon'},{date:'2026-06-15',type:'NEW MOON',name:''},
+  {date:'2026-06-30',type:'FULL MOON',name:'Buck Moon'},{date:'2026-07-14',type:'NEW MOON',name:''},
+  {date:'2026-07-29',type:'FULL MOON',name:'Sturgeon Moon'},{date:'2026-08-12',type:'NEW MOON',name:''},
+  {date:'2026-08-28',type:'FULL MOON',name:'Harvest Moon'},{date:'2026-09-11',type:'NEW MOON',name:''},
+  {date:'2026-09-26',type:'FULL MOON',name:"Hunter's Moon"},{date:'2026-10-11',type:'NEW MOON',name:''},
+  {date:'2026-10-25',type:'FULL MOON',name:'Beaver Moon'},{date:'2026-11-09',type:'NEW MOON',name:''},
+  {date:'2026-11-24',type:'FULL MOON',name:'Cold Moon'},{date:'2026-12-09',type:'NEW MOON',name:''},
+  {date:'2026-12-24',type:'FULL MOON',name:'Wolf Moon'},
+];
+
+// ============================================================
+// SUPPLIERS
+// ============================================================
+
+const SUPPLIERS = {
+  cn: {
+    name: 'C&N Apiaries',
+    location: 'Maine (local)',
+    leadDays: 5,
+    what: 'Honey (local varieties)',
+    shipping: 'Local delivery — coordinate schedules',
+    note: 'Best for local Maine honey. Call to arrange delivery.',
+    color: '#2D5A27',
+  },
+  crystal: {
+    name: "Crystal's Honey",
+    location: 'Billerica, MA',
+    leadDays: 14,
+    what: 'Honey (specialty varieties)',
+    shipping: 'Drive or ship (~$156, 8 days)',
+    note: 'Order 14 days out. Combine with in-law visits when possible to save shipping.',
+    color: '#C8860A',
+  },
+  nwwild: {
+    name: 'NW Wild Foods',
+    location: 'Washington State',
+    leadDays: 7,
+    what: 'IQF Fruit',
+    shipping: 'Ships Mondays only on dry ice',
+    note: 'MUST order before Monday cutoff. Missing Monday = 1 week delay.',
+    color: '#880E4F',
+    mondayOnly: true,
+  },
+};
+
+// ============================================================
+// PLANNED BATCHES STATE
+// ============================================================
+
+let planned = [
+  {
+    id: 'p1',
+    name: 'Blue on Blue',
+    type: 'melomel',
+    targetMoon: '2026-05-01',
+    varietal: 'Blueberry Blossom',
+    honeySupplier: 'crystal',
+    fruitTypes: 'Blueberries (IQF)',
+    fruitLbs: 50,
+    fruitSupplier: 'nwwild',
+    tank: 'spike-11',
+    notes: 'Beltane / Full Moon. Made this before — blueberries in blueberry blossom honey.',
+    honeyOnHand: 0,
+    fruitOnHand: 0,
+  }
+];
+let plannedId = 2;
+
+// ============================================================
+// PLANNING HELPERS
+// ============================================================
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+function daysUntil(dateStr) {
+  return Math.ceil((new Date(dateStr) - new Date(today())) / 86400000);
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+
+// Find the next Monday on or before a deadline
+function lastMondayBefore(dateStr) {
+  const d = new Date(dateStr);
+  const day = d.getDay(); // 0=Sun, 1=Mon
+  const daysBack = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - daysBack);
+  return d.toISOString().slice(0,10);
+}
+
+function nextMonday(afterDate) {
+  const d = new Date(afterDate || today());
+  const day = d.getDay();
+  const daysAhead = day === 0 ? 1 : 8 - day;
+  d.setDate(d.getDate() + daysAhead);
+  return d.toISOString().slice(0,10);
+}
+
+function honeyNeeded(p) {
+  const t = TANKS.find(x => x.id === p.tank);
+  const sf = t ? t.gallons / 40 : 1;
+  return Math.round(120 * sf);
+}
+
+function getOrderDeadlines(p) {
+  const orders = [];
+  const brewDate = p.targetMoon;
+  if (!brewDate) return orders;
+
+  // Honey
+  const hs = SUPPLIERS[p.honeySupplier];
+  if (hs) {
+    const needed = honeyNeeded(p);
+    const onHand = parseFloat(p.honeyOnHand) || 0;
+    const toOrder = Math.max(0, needed - onHand);
+    if (toOrder > 0) {
+      let orderBy = addDays(brewDate, -hs.leadDays);
+      const du = daysUntil(orderBy);
+      orders.push({
+        type: 'honey',
+        item: `${needed} lbs ${p.varietal || ''} honey (need ${toOrder} lbs — ${onHand} on hand)`,
+        supplier: hs.name,
+        supplierKey: p.honeySupplier,
+        orderBy,
+        daysUntilOrder: du,
+        brewDate,
+        note: hs.note,
+        color: hs.color,
+        urgency: du <= 0 ? 'urgent' : du <= 3 ? 'soon' : 'ok',
+      });
+    }
+  }
+
+  // Fruit
+  const fs = SUPPLIERS[p.fruitSupplier];
+  if (fs && p.fruitTypes) {
+    const onHand = parseFloat(p.fruitOnHand) || 0;
+    const needed = parseFloat(p.fruitLbs) || 50;
+    const toOrder = Math.max(0, needed - onHand);
+    if (toOrder > 0) {
+      // For NW Wild Foods, must ship Monday — find last Monday before brew date minus lead
+      let orderBy;
+      const latestReceive = addDays(brewDate, -1); // need it day before at latest
+      if (fs.mondayOnly) {
+        // Must order by the Monday that ships to arrive by latestReceive
+        // Shipping takes ~5 days from Monday
+        const shipBy = addDays(latestReceive, -5);
+        orderBy = lastMondayBefore(shipBy);
+        // If that Monday is in the past, next Monday
+        if (daysUntil(orderBy) < 0) orderBy = nextMonday(today());
+      } else {
+        orderBy = addDays(brewDate, -fs.leadDays);
+      }
+      const du = daysUntil(orderBy);
+
+      // NW Wild Foods Monday warning
+      const isTodayMonday = new Date().getDay() === 1;
+      let extraNote = fs.note;
+      if (fs.mondayOnly && du <= 0 && isTodayMonday) {
+        extraNote = '🚨 TODAY is Monday — order NOW before cutoff or wait a full week!';
+      } else if (fs.mondayOnly && du <= 0) {
+        extraNote = `⚠ Monday cutoff passed. Next ship date: ${fmt(nextMonday(today()))}`;
+      }
+
+      orders.push({
+        type: 'fruit',
+        item: `${needed} lbs ${p.fruitTypes} (need ${toOrder} lbs — ${onHand} on hand)`,
+        supplier: fs.name,
+        supplierKey: p.fruitSupplier,
+        orderBy,
+        daysUntilOrder: du,
+        brewDate,
+        note: extraNote,
+        color: fs.color,
+        urgency: du <= 0 ? 'urgent' : du <= 3 ? 'soon' : 'ok',
+        mondayOnly: fs.mondayOnly,
+      });
+    }
+  }
+
+  return orders;
+}
+
+// ============================================================
+// RENDER MOON CALENDAR
+// ============================================================
+
+function renderMoonCal() {
+  const el = document.getElementById('moonCal');
+  const todayStr = today();
+  const ninetyDays = addDays(todayStr, 90);
+  const plannedDates = new Set(planned.map(p => p.targetMoon));
+
+  // Show upcoming moons — next 90 days prominent, rest smaller
+  const upcoming = MOONS.filter(m => m.date >= todayStr);
+
+  const cards = upcoming.map(m => {
+    const du = daysUntil(m.date);
+    const isSoon = du >= 0 && du <= 90;
+    const isPast = du < 0;
+    const hasBatch = plannedDates.has(m.date);
+    const isActiveBatch = batches.some(b => b.startDate === m.date && b.stage !== 'bottled');
+    const moonEmoji = m.type === 'FULL MOON' ? '🌕' : '🌑';
+    const typeClass = m.type === 'FULL MOON' ? 'full' : 'new';
+
+    const dStr = du === 0 ? 'Today!' : du === 1 ? 'Tomorrow' : du > 0 ? `In ${du} days` : `${Math.abs(du)}d ago`;
+
+    return `<div class="moon-card ${typeClass} ${isSoon?'soon':''} ${hasBatch?'has-batch':''} ${isPast?'past':''}" onclick="selectMoon('${m.date}','${m.type}','${m.name}')">
+      <div class="moon-type ${typeClass}">${moonEmoji} ${m.type}</div>
+      <div class="moon-date-big">${new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+      <div style="font-size:0.62rem;color:var(--mid);">${new Date(m.date).getFullYear()}</div>
+      ${m.name ? `<div class="moon-name">${m.name}</div>` : ''}
+      <div class="moon-days">${dStr}</div>
+      ${hasBatch ? `<div class="moon-batch-tag">📋 Planned</div>` : ''}
+      ${isActiveBatch ? `<div class="moon-batch-tag" style="background:var(--amber-pale);color:var(--amber-deep);border-color:var(--amber);">🍯 Active</div>` : ''}
+      ${(!hasBatch && !isPast) ? `<div style="font-size:0.58rem;color:var(--mid);margin-top:4px;">+ Plan batch</div>` : ''}
+    </div>`;
+  });
+
+  // Show next 90 days first, then rest collapsed
+  const next90 = upcoming.filter(m => daysUntil(m.date) <= 90);
+  const beyond = upcoming.filter(m => daysUntil(m.date) > 90);
+
+  const next90Cards = next90.map(m => {
+    const du = daysUntil(m.date);
+    const hasBatch = plannedDates.has(m.date);
+    const isActiveBatch = batches.some(b => b.startDate === m.date && b.stage !== 'bottled');
+    const moonEmoji = m.type === 'FULL MOON' ? '🌕' : '🌑';
+    const typeClass = m.type === 'FULL MOON' ? 'full' : 'new';
+    const dStr = du === 0 ? 'Today!' : du === 1 ? 'Tomorrow' : `In ${du} days`;
+    return `<div class="moon-card ${typeClass} ${hasBatch?'has-batch':''}" onclick="selectMoon('${m.date}','${m.type}','${m.name}')">
+      <div class="moon-type ${typeClass}">${moonEmoji} ${m.type}</div>
+      <div class="moon-date-big">${new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+      <div style="font-size:0.62rem;color:var(--mid);">${new Date(m.date).getFullYear()}</div>
+      ${m.name ? `<div class="moon-name">${m.name}</div>` : ''}
+      <div class="moon-days">${dStr}</div>
+      ${hasBatch ? `<div class="moon-batch-tag">📋 Planned</div>` : ''}
+      ${isActiveBatch ? `<div class="moon-batch-tag" style="background:var(--amber-pale);color:var(--amber-deep);border-color:var(--amber);">🍯 Active</div>` : ''}
+      ${(!hasBatch && !isActiveBatch) ? `<div style="font-size:0.58rem;color:var(--mid);margin-top:4px;cursor:pointer;">+ Plan batch</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const beyondCards = beyond.map(m => {
+    const du = daysUntil(m.date);
+    const hasBatch = plannedDates.has(m.date);
+    const moonEmoji = m.type === 'FULL MOON' ? '🌕' : '🌑';
+    const typeClass = m.type === 'FULL MOON' ? 'full' : 'new';
+    return `<div class="moon-card ${typeClass} ${hasBatch?'has-batch':''}" onclick="selectMoon('${m.date}','${m.type}','${m.name}')" style="opacity:0.75;">
+      <div class="moon-type ${typeClass}">${moonEmoji} ${m.type}</div>
+      <div class="moon-date-big">${new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+      <div style="font-size:0.62rem;color:var(--mid);">${new Date(m.date).getFullYear()}</div>
+      ${m.name ? `<div class="moon-name">${m.name}</div>` : ''}
+      <div class="moon-days">In ${du} days</div>
+      ${hasBatch ? `<div class="moon-batch-tag">📋 Planned</div>` : ''}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--mid);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Next 90 Days — Click any moon to plan a batch</div>
+    <div class="moon-grid">${next90Cards}</div>
+    <details style="margin-top:8px;">
+      <summary style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--mid);cursor:pointer;margin-bottom:8px;">Show remaining year (${beyond.length} moon dates)</summary>
+      <div class="moon-grid" style="margin-top:8px;">${beyondCards}</div>
+    </details>
+  `;
+}
+
+function selectMoon(date, type, name) {
+  // Pre-fill the add planned batch form
+  document.getElementById('pm_moon').value = date;
+  document.getElementById('pm_moonlabel').textContent = type + (name ? ' — ' + name : '') + ' · ' + fmt(date);
+  document.getElementById('addPlannedForm').scrollIntoView({behavior:'smooth'});
+  document.getElementById('pm_name').focus();
+}
+
+// ============================================================
+// RENDER PLANNED BATCHES
+// ============================================================
+
+function renderPlanned() {
+  const el = document.getElementById('plannedList');
+
+  if (!planned.length) {
+    el.innerHTML = `<div style="color:var(--mid);font-size:0.85rem;font-style:italic;padding:12px 0;">No planned batches yet. Click a moon date above to start planning.</div>`;
+    renderOrderChecklist();
+    return;
+  }
+
+  const sorted = [...planned].sort((a,b) => (a.targetMoon||'').localeCompare(b.targetMoon||''));
+
+  el.innerHTML = sorted.map(p => {
+    const moon = MOONS.find(m => m.date === p.targetMoon);
+    const du = p.targetMoon ? daysUntil(p.targetMoon) : null;
+    const tank = TANKS.find(t => t.id === p.tank);
+    const hn = honeyNeeded(p);
+    const honeyOnHand = parseFloat(p.honeyOnHand) || 0;
+    const fruitOnHand = parseFloat(p.fruitOnHand) || 0;
+    const fruitNeeded = parseFloat(p.fruitLbs) || 50;
+    const honeyStatus = honeyOnHand >= hn ? 'inv-ok' : honeyOnHand > 0 ? 'inv-partial' : 'inv-short';
+    const fruitStatus2 = fruitOnHand >= fruitNeeded ? 'inv-ok' : fruitOnHand > 0 ? 'inv-partial' : 'inv-short';
+    const honeyLabel = honeyOnHand >= hn ? '✓ In house' : honeyOnHand > 0 ? `${hn-honeyOnHand} lbs short` : 'Need to order';
+    const fruitLabel = fruitOnHand >= fruitNeeded ? '✓ In house' : fruitOnHand > 0 ? `${fruitNeeded-fruitOnHand} lbs short` : 'Need to order';
+    const ti = TYPES[p.type] || TYPES.traditional;
+    const moonEmoji = (moon?.type||'').includes('FULL') ? '🌕' : '🌑';
+
+    return `<div class="planned-card">
+      <div class="planned-header">
+        <div style="font-size:1.3rem;">${moonEmoji}</div>
+        <div style="flex:1;">
+          <div class="planned-name">${p.name}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--mid);">
+            ${p.targetMoon ? fmt(p.targetMoon) + (du >= 0 ? ' · In ' + du + ' days' : ' · Past') : 'No date set'}
+            ${moon?.name ? ' · ' + moon.name : ''}
+          </div>
+        </div>
+        <span class="tbadge ${ti.cls}">${ti.label}</span>
+        ${tank ? `<span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--mid);">${tank.name}</span>` : ''}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:0.6rem;text-transform:uppercase;color:var(--mid);margin-bottom:6px;">Honey — ${hn} lbs ${p.varietal||''}</div>
+          <div class="inv-row">
+            <label>On hand (lbs)</label>
+            <input type="number" value="${p.honeyOnHand||0}" min="0" onchange="updatePlanned('${p.id}','honeyOnHand',this.value);renderAll();">
+            <span class="inv-status ${honeyStatus}">${honeyLabel}</span>
+          </div>
+          <div style="font-size:0.68rem;color:var(--mid);">Supplier: ${SUPPLIERS[p.honeySupplier]?.name||'—'} · Lead time: ${SUPPLIERS[p.honeySupplier]?.leadDays||'?'}d</div>
+        </div>
+        ${['melomel','experimental'].includes(p.type) ? `
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:0.6rem;text-transform:uppercase;color:var(--mid);margin-bottom:6px;">Fruit — ${fruitNeeded} lbs ${p.fruitTypes||''}</div>
+          <div class="inv-row">
+            <label>On hand (lbs)</label>
+            <input type="number" value="${p.fruitOnHand||0}" min="0" onchange="updatePlanned('${p.id}','fruitOnHand',this.value);renderAll();">
+            <span class="inv-status ${fruitStatus2}">${fruitLabel}</span>
+          </div>
+          <div style="font-size:0.68rem;color:var(--mid);">Supplier: ${SUPPLIERS[p.fruitSupplier||'nwwild']?.name||'—'} · Ships Mondays only</div>
+        </div>` : '<div></div>'}
+      </div>
+
+      ${p.notes ? `<div style="font-size:0.72rem;color:var(--mid);font-style:italic;margin-bottom:10px;">${p.notes}</div>` : ''}
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="convertToActive('${p.id}')">▶ Start This Batch</button>
+        <button class="btn btn-danger btn-sm" onclick="if(confirm('Remove planned batch?'))removePlanned('${p.id}')">✕ Remove</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Render add form below
+  renderAddPlannedForm();
+  renderOrderChecklist();
+}
+
+function renderAddPlannedForm() {
+  const el = document.getElementById('plannedList');
+  const tankOpts = TANKS.map(t => {
+    const used = batches.some(b=>b.tankId===t.id&&b.stage!=='bottled');
+    return `<option value="${t.id}"${used?' disabled':''}>Tank #${t.number} — ${t.gallons}gal${t.leased?' (L)':''}${used?' [in use]':''}</option>`;
+  }).join('');
+
+  el.innerHTML += `
+    <div id="addPlannedForm" style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:16px;">
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--amber-deep);margin-bottom:12px;">+ Plan a New Batch</div>
+      <div id="pm_moonlabel" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--amber);margin-bottom:10px;min-height:18px;">← Click a moon date above to select brew date</div>
+      <input type="hidden" id="pm_moon">
+      <div class="grid3" style="margin-bottom:10px;">
+        <div class="fg"><label>Batch Name</label><input type="text" id="pm_name" placeholder="e.g. Blue on Blue"></div>
+        <div class="fg"><label>Mead Type</label><select id="pm_type" onchange="updPmType()">
+          <option value="traditional">Traditional</option>
+          <option value="melomel">Melomel</option>
+          <option value="metheglin">Metheglin</option>
+          <option value="experimental">Experimental</option>
+        </select></div>
+        <div class="fg"><label>Tank</label><select id="pm_tank"><option value="">— Select —</option>${tankOpts}</select></div>
+      </div>
+      <div class="grid2" style="margin-bottom:10px;">
+        <div class="fg"><label>Honey Varietal</label><input type="text" id="pm_var" placeholder="e.g. Blueberry Blossom"></div>
+        <div class="fg"><label>Honey Supplier</label><select id="pm_hsup">
+          <option value="cn">C&N Apiaries (Maine, 4-5d)</option>
+          <option value="crystal">Crystal's Honey (MA, 14d)</option>
+        </select></div>
+      </div>
+      <div id="pm_fruitrow" class="grid3" style="margin-bottom:10px;display:none;">
+        <div class="fg"><label>Fruit(s)</label><input type="text" id="pm_ft" placeholder="e.g. Blueberries (IQF)"></div>
+        <div class="fg"><label>Fruit lbs</label><input type="number" id="pm_flbs" value="50" min="0"></div>
+        <div class="fg"><label>Fruit Supplier</label><select id="pm_fsup">
+          <option value="nwwild">NW Wild Foods (WA, Mon ship)</option>
+          <option value="other">Other</option>
+        </select></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px;"><label>Notes</label><input type="text" id="pm_notes" placeholder="Special occasion, recipe notes..."></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="addPlanned()">+ Add to Plan</button>
+        <span id="pm_err" style="font-size:0.75rem;color:var(--red);align-self:center;"></span>
+      </div>
+    </div>
+  `;
+}
+
+function updPmType() {
+  const t = document.getElementById('pm_type').value;
+  document.getElementById('pm_fruitrow').style.display = ['melomel','experimental'].includes(t) ? 'grid' : 'none';
+}
+
+// ============================================================
+// RENDER ORDER CHECKLIST
+// ============================================================
+
+function renderOrderChecklist() {
+  const el = document.getElementById('orderChecklist');
+  const allOrders = planned.flatMap(p => getOrderDeadlines(p).map(o => ({...o, batchName: p.name})));
+
+  if (!allOrders.length) {
+    el.innerHTML = `<div class="alert alert-plain">No outstanding orders needed — all ingredients in house or no planned batches requiring orders.</div>`;
+    return;
+  }
+
+  const sorted = [...allOrders].sort((a,b) => a.daysUntilOrder - b.daysUntilOrder);
+
+  el.innerHTML = sorted.map(o => {
+    const urgClass = o.urgency === 'urgent' ? 'urgent' : o.urgency === 'soon' ? 'soon' : 'ok';
+    const urgLabel = o.daysUntilOrder <= 0 ? '🚨 ORDER NOW' : o.daysUntilOrder === 1 ? '⚠ ORDER TOMORROW' : `Order by ${fmt(o.orderBy)} (${o.daysUntilOrder}d)`;
+    return `<div class="order-card ${urgClass}">
+      <div class="order-supplier" style="color:${o.color};">${o.supplier}</div>
+      <div class="order-item">${o.item}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.7rem;margin-top:3px;">For: <strong>${o.batchName}</strong> · Brew date: ${fmt(o.brewDate)}</div>
+      <div class="order-deadline" style="color:${o.urgency==='urgent'?'var(--red)':o.urgency==='soon'?'#7A5000':'var(--green)'};">${urgLabel}</div>
+      ${o.note ? `<div class="order-note">${o.note}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// PLANNED BATCH ACTIONS
+// ============================================================
+
+function addPlanned() {
+  const name = document.getElementById('pm_name').value.trim();
+  const moon = document.getElementById('pm_moon').value;
+  const type = document.getElementById('pm_type').value;
+  const err = document.getElementById('pm_err');
+  if (!name) { err.textContent = 'Name required.'; return; }
+  if (!moon) { err.textContent = 'Select a moon date above.'; return; }
+  planned.push({
+    id: 'p' + plannedId++,
+    name, type,
+    targetMoon: moon,
+    varietal: document.getElementById('pm_var').value.trim(),
+    honeySupplier: document.getElementById('pm_hsup').value,
+    fruitTypes: document.getElementById('pm_ft').value.trim(),
+    fruitLbs: parseFloat(document.getElementById('pm_flbs').value)||50,
+    fruitSupplier: document.getElementById('pm_fsup').value,
+    tank: document.getElementById('pm_tank').value,
+    notes: document.getElementById('pm_notes').value.trim(),
+    honeyOnHand: 0,
+    fruitOnHand: 0,
+  });
+  err.textContent = '';
+  save(); renderAll();
+}
+
+function updatePlanned(id, field, value) {
+  const p = planned.find(x => x.id === id);
+  if (p) p[field] = value;
+  save();
+}
+
+function removePlanned(id) {
+  planned = planned.filter(p => p.id !== id);
+  save(); renderAll();
+}
+
+function convertToActive(id) {
+  const p = planned.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm(`Start "${p.name}" as an active batch on ${fmt(p.targetMoon)}?`)) return;
+  const b = mkBatch({
+    id: batchId++, name: p.name, type: p.type,
+    varietal: p.varietal, tankId: p.tank,
+    startDate: p.targetMoon, fermentDays: 60,
+    notes: p.notes, fruitTypes: p.fruitTypes,
+    fruitLbs: p.fruitLbs, moonPhase: MOONS.find(m=>m.date===p.targetMoon)?.type||'',
+    stage: 'fermenting', stageDates: {fermenting: p.targetMoon},
+  });
+  batches.push(b);
+  planned = planned.filter(x => x.id !== id);
+  expanded = b.id;
+  switchTab('batches');
+  save(); renderAll();
+}
+
+// ============================================================
+// TABS / RENDER ALL
+// ============================================================
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${t}')"]`).classList.add('active');
+  document.getElementById(`tab-${t}`).classList.add('active');
+  if(t==='planning'){renderMoonCal();renderPlanned();}
+}
+
+function renderAll(){
+  renderSidebar();renderAlerts();renderBatchList();renderScheduler();renderAnalysis();renderTimeline();
+  renderMoonCal();renderPlanned();
+  save();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+if(!loadLocal()){batches=INITIAL;batchId=INITIAL.length+1;}
+renderAll();
+</script>
+</body>
+</html>
